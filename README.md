@@ -1,1 +1,1 @@
-# Dynamic List with difrent variables type in pure C 
+# Dynamic List with diffrent variable types in C
