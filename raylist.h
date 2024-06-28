@@ -134,9 +134,7 @@ void* l_index(
 		Type* type, // return type pointer 
 		int idx  
 );
-void l_print(
-		List* _list
-);
+void l_print(void);
 #endif
 
 #ifdef LIST_C
@@ -311,31 +309,28 @@ void* l_index(
 //		l = l->next;
 //	}
 //}
-void l_print(
-		List* _list
-)
+void l_print()
 {
-	printf("printing");
-	if(_list == NULL)	printf("list: NULL");
-	l_reverse(&_list);
+	if(__list__ == NULL)	printf("list: NULL");
+	l_reverse(&__list__);
 	printf("[");
-	while(_list != NULL){
-		switch(_list->type){
+	while(__list__ != NULL){
+		switch(__list__->type){
 			case CHR:{
-				printf("'%c'" , *((int*)_list->data));
+				printf("'%c'" , *((int*)__list__->data));
 			}break;
 			case INT:{
-				printf("%d" , *((int*)_list->data));
+				printf("%d" , *((int*)__list__->data));
 			}break;
 			case STR:{
-				printf("\"%s\"" , _list->data);
+				printf("\"%s\"" , __list__->data);
 			}break;
 			case BOOL:{
-				printf("%s" , (_list->data == "true") ? "true" : "false");
+				printf("%s" , (__list__->data == "true") ? "true" : "false");
 			}break;
 		}
-		_list = _list->next;
-		if(_list != NULL)	printf(",");
+		__list__ = __list__->next;
+		if(__list__ != NULL)	printf(",");
 	}
 	printf("]");
 }

@@ -10,11 +10,10 @@
 
 int main(void){
 	Class_List my_list = list(
-				3,
-				INT , 234,
+				2,
 				STR , "Hello",
 				STR , "World"
 			);
-	//ll.List_Print();
+	my_list.List_Print();
 	return 0;
 }
