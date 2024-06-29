@@ -20,6 +20,8 @@
 #ifndef LIST_H
 #define LIST_H
 
+// TODO: handle call back functions type
+
 #define typeof(x) _Generic((x),   \
     int		: "int"		, \
     int   *	: "int*"	, \
@@ -44,16 +46,8 @@ typedef enum{
 	CHR = 0, 	// char type
 	STR    , 	// string type
 	BOOL   ,	// bool type
-
 	INT    , 	// int type
-	INTPTR ,	// int pointer type
-
 	FLT    , 	// float type
-	FLTPTR , 	// float pointer type
-
-	DBL    ,	// double type
-	DBLPTR ,	// double pointer type
-
 	VOIDPTR,	// void pointer type
 }Type;
 
@@ -78,10 +72,16 @@ typedef struct {
 	//		void* data,
 	//		Type type
 	//		);
+
+	// this function will return boolean true if search success 
+	bool (*List_Search)(
+			int* ,// index of the address or value
+			void* // data we need to search for
+	);
 	void (*List_Pop_Index)(
 			int idx // index value to delete
 	);
-	void (*List_Get)(
+	void* (*List_Get)(
 			int idx
 	);
 	void (*List_Reverse)(void);
@@ -122,12 +122,14 @@ void l_popidx(
 		List** _list,
 		int idx
 );
-void l_get(
+void* l_get(
 		int idx
 );
-void l_reverse(
-		List** _list
+bool l_search(
+		int*,
+		void*
 );
+void l_reverse(void);
 void* l_index(
 		List* _list,
 		void* data, // if data in NULL function will return the data at the parameter index else will ignore idx
@@ -151,13 +153,12 @@ Class_List list(int count , ...)
 		Type t = va_arg(args , Type);
 		switch(t){
 			case CHR:{
-				char t = (char)va_arg(args , char);
-				void* temp = &t;
+				void* temp = va_arg(args , char*);
 				add(temp, CHR , c);
 			}break;
 			case INT:{
-				int t = (int)va_arg(args , int);
-				void* temp = &t;
+				 // TODO: handle integer
+				void* temp= va_arg(args , void*);
 				add(temp, INT , c);
 			}break;
 			case STR:{
@@ -171,31 +172,16 @@ Class_List list(int count , ...)
 			}break;
 			case FLT:{
 				// we need to include stdint.h lib
-				float f = va_arg(args , float);
-				void *temp = (void *)(uintptr_t)*(uint32_t *)&f;
-				//float f2 = *(float *)&p;
+				//float f = va_arg(args , float);
+				//void *temp = (void *)(uintptr_t)*(uint32_t *)&f;
+				//float f2 = *(float *)&temp;
+				void* temp = va_arg(args , void*);
 				add(temp , FLT , c);
 			}break;
-			case FLTPTR :{
-				void* temp = va_arg(args , float*);
-				add(temp , FLTPTR , c);
-			}break;
-			case INTPTR :{
-				void* temp = va_arg(args , int*);
-				add(temp , INTPTR , c);
-			}break;
-			case DBLPTR :{
-				void* temp = va_arg(args , double*);
-				add(temp , DBLPTR , c);
-			}break;
-			case DBL :{
-				assert(false && "No Implemented yet");
-				//void* temp = va_arg(args , double*);
-				//add(temp , DBLPTR , c);
-			}break;
+			// TODO: handle other types
 			case VOIDPTR :{
 				void* temp = va_arg(args , void*);
-				add(temp , DBLPTR , c);
+				add(temp , VOIDPTR , c);
 			}
 		}
 		c++;
@@ -206,6 +192,7 @@ Class_List list(int count , ...)
 	//cl.List_Pop_Val = l_popval;
 	cl.List_Pop_Index = l_popidx;
 	cl.List_Get = l_get;
+	cl.List_Search = l_search;
 	cl.List_Reverse = l_reverse;
 	cl.List_Index = l_index;
 	cl.List_Print = l_print;
@@ -257,13 +244,25 @@ void l_popidx(
 	}
 	l_popidx(&(*_list)->next , idx);
 }
-void l_get(int idx){}
-void l_reverse(
-		List** _list
+void* l_get(int idx)
+{
+	if(idx > global_count)	return NULL;
+	while(__list__ != NULL){
+		if(__list__->index == idx)	return __list__->data;
+		__list__ = __list__->next;
+	}
+}
+bool l_search(
+		int* idx ,
+		void* data
 )
 {
+
+}
+void l_reverse()
+{
     List* prev = NULL; 
-    List* current = *_list; 
+    List* current = __list__; 
     List* next = NULL; 
     while (current != NULL) { 
         next = current->next; 
@@ -271,7 +270,7 @@ void l_reverse(
         prev = current; 
         current = next; 
     } 
-    *_list = prev; 
+    __list__ = prev; 
 }
 void* l_index(
 		List* _list,
@@ -299,39 +298,37 @@ void* l_index(
 	}
 	return NULL;
 }
-//void pr(List* l)
-//{
-//	while(l != NULL){
-//		if(strlen(l->data) == 1)
-//			printf("%d,%d\n" , *((int*)l->data), l->index);
-//		else
-//			printf("%s,%d\n" , l->data, l->index);
-//		l = l->next;
-//	}
-//}
 void l_print()
 {
 	if(__list__ == NULL)	printf("list: NULL");
-	l_reverse(&__list__);
-	printf("[");
+	l_reverse();
+	printf("[\n");
 	while(__list__ != NULL){
 		switch(__list__->type){
 			case CHR:{
-				printf("'%c'" , *((int*)__list__->data));
+				printf("\n\t'%s'" ,(__list__->data) );
 			}break;
 			case INT:{
-				printf("%d" , *((int*)__list__->data));
+				printf("\n\t%d" , *(int*)(__list__->data));
 			}break;
 			case STR:{
-				printf("\"%s\"" , __list__->data);
+				printf("\n\t\"%s\"" , __list__->data);
 			}break;
 			case BOOL:{
-				printf("%s" , (__list__->data == "true") ? "true" : "false");
+				printf("\n\t%s" , (__list__->data == "true") ? "true" : "false");
 			}break;
+			case FLT :{
+				printf("\n\t%f" , *((float*)__list__->data));
+			}break;
+			case VOIDPTR :{
+				// printing address of the void ptr
+				printf("\n\t%p" , __list__->data);
+			}break;
+
 		}
 		__list__ = __list__->next;
 		if(__list__ != NULL)	printf(",");
 	}
-	printf("]");
+	printf("\n]");
 }
 #endif
