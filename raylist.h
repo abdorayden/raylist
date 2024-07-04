@@ -1,26 +1,38 @@
+/************************************************************************************************
+*			Copyright (c) 2023 Ray Den						*
+*												*
+*	Permission is hereby granted, free of charge, to any person obtaining a copy		*
+*	of this software and associated documentation files (the "Software"), to deal		*
+*	in the Software without restriction, including without limitation the rights		*
+*	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell		*
+*	copies of the Software, and to permit persons to whom the Software is			*
+*	furnished to do so, subject to the following conditions:				*
+*												*
+*	The above copyright notice and this permission notice shall be included in		*
+*	all copies or substantial portions of the Software.					*
+*												*
+*	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR		*
+*	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,		*	
+*	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE		*
+*	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER			*
+*	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,		*	
+*	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN		*
+*	THE SOFTWARE.										*
+*												*
+ ************************************************************************************************/
 
-// Header Only Liberary in C
-
-/************************************
- *	EXAMPLE:
- *		list(3,
- *	     INT,23,
- *	     STR , "Hello",
- *	     STR , "world"
- *		);           
- *	   list(5, 
- *	     CHR, 35, 
- *	     STR, "Hello",
- *	     STR, "world",
- *	     BOOL , false    
- *	     	    );  
- *
- ************************************/ 
 
 #ifndef LIST_H
 #define LIST_H
 
 // TODO: handle call back functions type
+
+// 	typeof pragma returns string contained type of variable
+// 	Example :
+// 		int var = 4;
+// 		printf("typeof(test) : %s" , typeof(var));
+// 	Output :
+// 		typeof(test) : int
 
 #define typeof(x) _Generic((x),   \
     int		: "int"		, \
@@ -37,11 +49,15 @@
     default	: "unknown"	  \
     )
 
+// boolean enum
+// we don't need stdbool lib
 typedef enum{
 	false,
 	true = !(false)
 }bool;
 
+// Type enum contained bunch of types helps functions any variables type will work for
+// STR for strings BOOL for boolean ... 
 typedef enum{
 	CHR = 0, 	// char type
 	STR    , 	// string type
@@ -49,47 +65,130 @@ typedef enum{
 	INT    , 	// int type
 	FLT    , 	// float type
 	VOIDPTR,	// void pointer type
+
+	VOIDFUNC,
+	INTFUNC ,
+	BOOLFUNC,
+	CHARFUNC,
+	STRFUNC
 }Type;
 
+typedef char* string;
+
+/*
+ *	Linked List struct
+ *		index : index of single list
+ *		type  : type of the data memory saved in void* data pointer
+ *		data  : the place we store the address of our variables 
+ *		next  : pointing to next list
+ * */
+
+typedef void 	(*VOIDFUNCTION		)(void);
+typedef int  	(*INTEGERFUNCTION  	)(void);
+typedef bool 	(*BOOLEANFUNCTION  	)(void);
+typedef char 	(*CHARACTERFUNCTION	)(void);
+typedef string 	(*STRINGFUNCTION 	)(void);
+
 typedef struct list {
-	int index;
-	Type type;
-	void* data;
-	struct list* next;
+	int 		index;
+	Type 		type;
+	void* 		data;
+	struct list* 	next;
 }List;
 
 // Global list variable 
 List* __list__ = NULL;
 
+/*
+ *	Class_List struct act like class all thouse functions point to other functions 
+ *
+ *	Example :
+ *		void foo(void){
+ *			printf("bar");
+ *		}
+ *		Class_List test;
+ *		test.List_Append = foo;
+ *		
+ * */
 typedef struct {
+	/*
+	 *	List_Append function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	List_Append(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *
+	 *	Example :
+	 *		my_list.List_Append(STR , "Hello World");
+	 *
+	 * */
 	void (*List_Append)(
 			Type type,
-			void* data	// the data
+			void* data
 	);
-	//void (*List_Insert)(void);
-	//void (*List_Pop_Val)(
-	//		List** _list,
-	//		void* data,
-	//		Type type
-	//		);
-
-	// this function will return boolean true if search success 
+	/*
+	 * 	List_Search function return true if the data has been found and will store index of the data in int* parameter else will return false
+	 *
+	 *	List_Search(
+	 *		int* : integer pointer variable to store index of the data we found
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 *	)
+	 *
+	 *	Example :
+	 *		int var;
+	 *		if(my_list.List_Search(&var, STR , "Hello World"))	// handle (var contained the index of the data)
+	 *		else 							// handle
+	 *
+	 * */
 	bool (*List_Search)(
-			int* ,// index of the address or value
-			void* // data we need to search for
+			int* ,
+			Type ,
+			void* 
 	);
-	void (*List_Pop_Index)(
-			int idx // index value to delete
+	/*
+	 *	List_Del_Index function takes index and delete it from the linked list
+	 *
+	 *	List_Del_Index(
+	 *		int : the index that we want to delete
+	 *	)
+	 *
+	 *	Example :
+	 *		my_list.List_Del_Index(3);
+	 *
+	 * */
+	void (*List_Del_Index)(
+			int idx 
 	);
+	/*
+	 *	List_Get function takes index parameter and will return void* data  
+	 *
+	 *	List_Del_Index(
+	 *		int : the index of the data we want to get
+	 *	)
+	 *
+	 *	Example :
+	 *		void* d = my_list.List_Get(2);
+	 *		the data pointer in d variable now 
+	 *
+	 * */
 	void* (*List_Get)(
 			int idx
 	);
+
+	/*
+	 *	List_Reverse function will reverse the list 
+	 *
+	 * */
 	void (*List_Reverse)(void);
-	void* (*List_Index)(
-		void* data, // if data in NULL function will return the data at the parameter index else will ignore idx
-		int idx  
-	);
+	/*
+	 *	List_Print function will print all our data in standerd output 
+	 * */
 	void (*List_Print)(void);
+
+	// TODO : Impelemnt list_exec_func 
+	void (*List_Exec_Func)(void);
 }Class_List;
 
 // global count for index
@@ -119,7 +218,6 @@ void l_append(
 //		Type type
 //		);
 void l_popidx(
-		List** _list,
 		int idx
 );
 void* l_get(
@@ -127,15 +225,10 @@ void* l_get(
 );
 bool l_search(
 		int*,
+		Type,
 		void*
 );
 void l_reverse(void);
-void* l_index(
-		List* _list,
-		void* data, // if data in NULL function will return the data at the parameter index else will ignore idx
-		Type* type, // return type pointer 
-		int idx  
-);
 void l_print(void);
 #endif
 
@@ -188,13 +281,10 @@ Class_List list(int count , ...)
 	}
 	va_end(args);
 	cl.List_Append = l_append;
-	//cl.List_Insert = l_insert;
-	//cl.List_Pop_Val = l_popval;
-	cl.List_Pop_Index = l_popidx;
+	cl.List_Del_Index = l_popidx;
 	cl.List_Get = l_get;
 	cl.List_Search = l_search;
 	cl.List_Reverse = l_reverse;
-	cl.List_Index = l_index;
 	cl.List_Print = l_print;
 	return cl;
 }
@@ -232,17 +322,19 @@ void l_popval(
 	}
 }
 void l_popidx(
-		List** _list,
 		int idx
 		)
 {
-	if((*_list == NULL) || idx < 0)	return;
-	if((*_list)->index == idx){
-		List* tmp = *_list;
-		*_list = (*_list)->next;
+	List* ___temp = __list__;
+	if((___temp == NULL) || idx < 0)	return;
+	if((___temp)->index == idx){
+		List* tmp = ___temp;
+		___temp = ___temp->next;
 		free(tmp);
+		return;
 	}
-	l_popidx(&(*_list)->next , idx);
+	___temp = ___temp->next;
+	l_popidx(idx);
 }
 void* l_get(int idx)
 {
@@ -254,10 +346,37 @@ void* l_get(int idx)
 }
 bool l_search(
 		int* idx ,
+		Type type ,
 		void* data
 )
 {
-
+	List* ___temp = __list__;
+	if(___temp == NULL)
+		return false;
+	while(___temp != NULL){
+		switch(type){
+			case STR :
+			case CHR :{
+				if(data == __list__->data  ){
+					*idx = ___temp->index ;
+					return true;
+				}
+			}break;
+			case INT:{
+				if(*((int*)data) == (*(int*)___temp->data)){
+					*idx = ___temp->index ;
+				 	return true;
+				}
+			}break;
+			case BOOL:{
+				if(*(bool*)data){
+					*idx = ___temp->index ;
+				 	return true;
+				}
+			}break;
+		}
+		___temp = ___temp->next;
+	}
 }
 void l_reverse()
 {
@@ -272,62 +391,37 @@ void l_reverse()
     } 
     __list__ = prev; 
 }
-void* l_index(
-		List* _list,
-		void* data, // if data in NULL function will return the data at the parameter index else will ignore idx
-		Type* type, // return type pointer 
-		int idx  
-)
-{
-	if(_list == NULL)	return NULL;
-	if((idx >= 0) && (data == NULL)){
-		while(_list != NULL){
-			if(_list->index == idx){
-				*type = _list->type;
-				return _list->data;
-			}
-		}
-	}
-	if(data != NULL){
-		while(_list != NULL){
-			if(_list->data == data){
-				*type = _list->type;
-				return &_list->index;
-			}
-		}
-	}
-	return NULL;
-}
 void l_print()
 {
-	if(__list__ == NULL)	printf("list: NULL");
+	List* ___temp = __list__;
+	if(___temp == NULL)	printf("list: NULL");
 	l_reverse();
 	printf("[\n");
-	while(__list__ != NULL){
-		switch(__list__->type){
+	while(___temp != NULL){
+		switch(___temp->type){
 			case CHR:{
-				printf("\n\t'%s'" ,(__list__->data) );
+				printf("\n\t'%s'" ,(___temp->data) );
 			}break;
 			case INT:{
-				printf("\n\t%d" , *(int*)(__list__->data));
+				printf("\n\t%d" , *(int*)(___temp->data));
 			}break;
 			case STR:{
-				printf("\n\t\"%s\"" , __list__->data);
+				printf("\n\t\"%s\"" , ___temp->data);
 			}break;
 			case BOOL:{
-				printf("\n\t%s" , (__list__->data == "true") ? "true" : "false");
+				printf("\n\t%s" , (___temp->data == "true") ? "true" : "false");
 			}break;
 			case FLT :{
-				printf("\n\t%f" , *((float*)__list__->data));
+				printf("\n\t%f" , *((float*)___temp->data));
 			}break;
 			case VOIDPTR :{
 				// printing address of the void ptr
-				printf("\n\t%p" , __list__->data);
+				printf("\n\t%p" , ___temp->data);
 			}break;
 
 		}
-		__list__ = __list__->next;
-		if(__list__ != NULL)	printf(",");
+		___temp = ___temp->next;
+		if(___temp != NULL)	printf(",");
 	}
 	printf("\n]");
 }

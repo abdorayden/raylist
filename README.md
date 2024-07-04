@@ -40,6 +40,7 @@ Class_List my_list = list(
 my_list.List_Reverse();
 my_list.List_Append(STR , "RayDen");
 my_list.List_Append(BOOL , false);
+my_list.List_Print();
 ```
 ## Out Put 
 ```console

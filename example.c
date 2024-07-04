@@ -31,8 +31,13 @@ int main(void){
 	my_list.List_Append(BOOL , false);
 	void* gett = my_list.List_Get(3);
 	if(gett != NULL){
-		printf("gett : %d" , *(int*)gett);
+		printf("gett : %d\n" , *(int*)gett);
 	}
+	int idx;
+	bool test = true;
+	if(my_list.List_Search(&idx , BOOL , (void*)&test)){
+		printf("Found in index : %d\n" , idx);
+	}else	printf("Not Found \n");
 	my_list.List_Print();
 	return 0;
 }
