@@ -68,7 +68,6 @@ typedef enum{
 
 	VOIDFUNC,
 	INTFUNC ,
-	BOOLFUNC,
 	CHARFUNC,
 	STRFUNC
 }Type;
@@ -188,7 +187,12 @@ typedef struct {
 	void (*List_Print)(void);
 
 	// TODO : Impelemnt list_exec_func 
-	void (*List_Exec_Func)(void);
+	void* (*List_Exec_Func)(
+			int
+	);
+
+	// clear list
+	void (*List_Clear)(void);
 }Class_List;
 
 // global count for index
@@ -207,6 +211,13 @@ Class_List list(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
+
+void l_clear(void);
+
+void* exec( 
+		int // index 
+);
+
 void l_append(
 		Type type,
 		void* data
@@ -276,6 +287,22 @@ Class_List list(int count , ...)
 				void* temp = va_arg(args , void*);
 				add(temp , VOIDPTR , c);
 			}
+			case  VOIDFUNC:{
+				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
+				add((void*)temp , VOIDFUNC , c);
+			}break; 
+			case  INTFUNC :{
+				INTEGERFUNCTION* temp = va_arg(args ,INTEGERFUNCTION);
+				add((void*)temp , INTFUNC , c);
+			}break;
+			case  CHARFUNC:{
+				CHARACTERFUNCTION* temp = va_arg(args ,CHARACTERFUNCTION);
+				add((void*)temp , CHARFUNC , c);
+			}break;
+			case  STRFUNC :{
+				STRINGFUNCTION* temp = va_arg(args ,STRINGFUNCTION);
+				add((void*)temp , STRFUNC , c);
+			}break; 
 		}
 		c++;
 	}
@@ -286,6 +313,8 @@ Class_List list(int count , ...)
 	cl.List_Search = l_search;
 	cl.List_Reverse = l_reverse;
 	cl.List_Print = l_print;
+	cl.List_Exec_Func = exec;
+	cl.List_Clear = l_clear;
 	return cl;
 }
 void l_append(
@@ -294,6 +323,47 @@ void l_append(
 )
 {
 	add(data, type , global_count++);
+}
+void l_clear(void){
+	__list__ = NULL;
+}
+void* exec(int idx)
+{
+	if(idx > global_count)	return NULL;
+	if(idx < 0){
+		while(__list__ != NULL){
+			switch(__list__->type){
+				//case  INTFUNC :
+				//case  CHARFUNC:
+				//case  STRFUNC : 
+				case  VOIDFUNC:{
+					int (*call)() = (int(*)())__list__->data;
+					call();
+				}break; 
+			}
+			__list__ = __list__->next;
+		}
+	}else{
+		while(__list__ != NULL){
+			if(__list__->index == idx){
+				switch(__list__->type){
+					case  VOIDFUNC:{
+						int (*call)() = (int(*)())__list__->data;
+						call();
+						return NULL;
+					}break; 
+					//case  CHARFUNC:
+					//case  INTFUNC :{
+					//	return &__list__->data();
+					//}break;
+					//case  STRFUNC :{
+					//	return __list__->data();
+					//}break; 
+				}
+			}
+			__list__ = __list__->next;
+		}
+	}
 }
 //void l_insert(void);
 void l_popval(
@@ -417,6 +487,18 @@ void l_print()
 			case VOIDPTR :{
 				// printing address of the void ptr
 				printf("\n\t%p" , ___temp->data);
+			}break;
+			case  INTFUNC:{
+				printf("\n\t<int function : %p><index : %d>" ,___temp->data,___temp->index);
+			}break; 
+			case  CHARFUNC:{
+				printf("\n\t<character function : %p><index : %d>", ___temp->data,___temp->index);
+			}break; 
+			case  STRFUNC :{
+				printf("\n\t<string function : %p><index : %d>", ___temp->data,___temp->index);
+			}break; 
+			case  VOIDFUNC:{
+				printf("\n\t<void function : %p><index : %d>" ,___temp->data,___temp->index);
 			}break;
 
 		}

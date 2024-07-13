@@ -11,6 +11,13 @@
 // TODO: make List_Search function work
 // TODO: make List_Pop_Idx function work
 
+void test(void);
+void foo(void);
+void bar(void);
+void baz(void);
+
+
+#if 0
 int main(void){
 	int v = 7;
 	float p = 3.14;
@@ -34,10 +41,42 @@ int main(void){
 		printf("gett : %d\n" , *(int*)gett);
 	}
 	int idx;
-	bool test = true;
-	if(my_list.List_Search(&idx , BOOL , (void*)&test)){
+	bool _test = true;
+	if(my_list.List_Search(&idx , BOOL , (void*)&_test)){
 		printf("Found in index : %d\n" , idx);
 	}else	printf("Not Found \n");
 	my_list.List_Print();
+
 	return 0;
+}
+#else
+
+int main(void){
+	Class_List my_list = list(
+			3,
+			VOIDFUNC ,test,
+			VOIDFUNC ,foo,
+			VOIDFUNC ,bar
+			);
+
+	my_list.List_Append(VOIDFUNC ,baz);
+			
+	my_list.List_Exec_Func(-1);
+	my_list.List_Clear();
+	return 0;
+}
+
+#endif
+
+void test(void){
+	printf("test test\n");
+}
+void foo(void){
+	printf("foo\n");
+}
+void bar(void){
+	printf("bar\n");
+}
+void baz(void){
+	printf("baz\n");
 }
