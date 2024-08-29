@@ -59,6 +59,7 @@ int main(void){
 			VOIDFUNC ,bar
 			);
 
+	my_list.List_Reverse();
 	my_list.List_Append(VOIDFUNC ,baz);
 			
 	my_list.List_Exec_Func(-1);

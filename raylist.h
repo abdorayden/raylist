@@ -337,7 +337,7 @@ void* exec(int idx)
 				//case  CHARFUNC:
 				//case  STRFUNC : 
 				case  VOIDFUNC:{
-					int (*call)() = (int(*)())__list__->data;
+					void (*call)() = (void(*)())__list__->data;
 					call();
 				}break; 
 			}
@@ -348,17 +348,19 @@ void* exec(int idx)
 			if(__list__->index == idx){
 				switch(__list__->type){
 					case  VOIDFUNC:{
-						int (*call)() = (int(*)())__list__->data;
+						void (*call)() = (void(*)())__list__->data;
 						call();
 						return NULL;
 					}break; 
-					//case  CHARFUNC:
-					//case  INTFUNC :{
-					//	return &__list__->data();
-					//}break;
-					//case  STRFUNC :{
-					//	return __list__->data();
-					//}break; 
+					case  CHARFUNC:
+					case  INTFUNC :{
+						int* (*call)() = (int*(*)()) __list__->data();
+						return call();
+					}break;
+					case  STRFUNC :{
+						char* (*call)() = (char*(*)()) __list__->data();
+						return call();
+					}break; 
 				}
 			}
 			__list__ = __list__->next;
