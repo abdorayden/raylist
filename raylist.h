@@ -50,7 +50,6 @@
     )
 
 // boolean enum
-// we don't need stdbool lib
 typedef enum{
 	false,
 	true = !(false)
@@ -95,8 +94,17 @@ typedef struct list {
 	struct list* 	next;
 }List;
 
+typedef union {
+	int    retint;
+	char   retchar;
+	float  retfloat;
+	bool   retbool;
+	string retstring;
+	void*  retnull;
+}RetType;
+
 // Global list variable 
-List* __list__ = NULL;
+//List* __list__ = NULL;
 
 /*
  *	Class_List struct act like class all thouse functions point to other functions 
@@ -123,6 +131,7 @@ typedef struct {
 	 *
 	 * */
 	void (*List_Append)(
+			List** __list__,
 			Type type,
 			void* data
 	);
@@ -142,6 +151,7 @@ typedef struct {
 	 *
 	 * */
 	bool (*List_Search)(
+			List** __list__,
 			int* ,
 			Type ,
 			void* 
@@ -158,6 +168,7 @@ typedef struct {
 	 *
 	 * */
 	void (*List_Del_Index)(
+			List** __list__,
 			int idx 
 	);
 	/*
@@ -173,6 +184,7 @@ typedef struct {
 	 *
 	 * */
 	void* (*List_Get)(
+			List** __list__,
 			int idx
 	);
 
@@ -180,45 +192,55 @@ typedef struct {
 	 *	List_Reverse function will reverse the list 
 	 *
 	 * */
-	void (*List_Reverse)(void);
+	void (*List_Reverse)(
+			List** __list__
+	);
 	/*
 	 *	List_Print function will print all our data in standerd output 
 	 * */
-	void (*List_Print)(void);
+	void (*List_Print)(
+			List* __list__
+	);
 
 	// TODO : Impelemnt list_exec_func 
 	void* (*List_Exec_Func)(
+			List* __list__,
 			int
 	);
 
 	// clear list
-	void (*List_Clear)(void);
+	void (*List_Clear)(
+			List* __list__
+	);
 }Class_List;
 
 // global count for index
 int global_count = 0;
 
-void add(void* val , Type t, int idx){
+void add(List** __list__ , void* val , Type t, int idx){
 	List* temp = malloc(sizeof(List));
 	temp->data = val;               
 	temp->type = t;                 
 	temp->index = idx;              
-	temp->next = __list__;                
-	__list__ = temp;                      
+	temp->next = *__list__;                
+	*__list__ = temp;                      
 }
 
 Class_List list(
+		List** __list__,
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
 
-void l_clear(void);
+void l_clear(List** __list__);
 
-void* exec( 
+RetType exec( 
+		List* __list__ ,
 		int // index 
 );
 
 void l_append(
+		List** __list__ ,
 		Type type,
 		void* data
 );
@@ -229,24 +251,28 @@ void l_append(
 //		Type type
 //		);
 void l_popidx(
+		List** __list__ ,
 		int idx
 );
-void* l_get(
+RetType l_get(
+		List* __list__ ,
 		int idx
 );
 bool l_search(
+		List* __list__ ,
 		int*,
 		Type,
 		void*
 );
-void l_reverse(void);
-void l_print(void);
+void l_reverse(List** __list__);
+void l_print(List* __list__);
 #endif
 
 #ifdef LIST_C
 
-Class_List list(int count , ...)
+Class_List list(List** __list__ , int count , ...)
 {
+	*__list__ = NULL; 
 	va_list args;
 	va_start(args , count);
 
@@ -258,21 +284,21 @@ Class_List list(int count , ...)
 		switch(t){
 			case CHR:{
 				void* temp = va_arg(args , char*);
-				add(temp, CHR , c);
+				add(__list__,temp, CHR , c);
 			}break;
 			case INT:{
 				 // TODO: handle integer
 				void* temp= va_arg(args , void*);
-				add(temp, INT , c);
+				add(__list__,temp, INT , c);
 			}break;
 			case STR:{
 				void* temp = va_arg(args , char*);
-				add(temp , STR , c);
+				add(__list__,temp , STR , c);
 			}break;
 			case BOOL:{
 				int t = va_arg(args , int);
 				void* temp = t ? "true" : "false";
-				add(temp, BOOL , c);
+				add(__list__,temp, BOOL , c);
 			}break;
 			case FLT:{
 				// we need to include stdint.h lib
@@ -280,28 +306,28 @@ Class_List list(int count , ...)
 				//void *temp = (void *)(uintptr_t)*(uint32_t *)&f;
 				//float f2 = *(float *)&temp;
 				void* temp = va_arg(args , void*);
-				add(temp , FLT , c);
+				add(__list__,temp , FLT , c);
 			}break;
 			// TODO: handle other types
 			case VOIDPTR :{
 				void* temp = va_arg(args , void*);
-				add(temp , VOIDPTR , c);
+				add(__list__,temp , VOIDPTR , c);
 			}
 			case  VOIDFUNC:{
 				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
-				add((void*)temp , VOIDFUNC , c);
+				add(__list__,(void*)temp , VOIDFUNC , c);
 			}break; 
 			case  INTFUNC :{
-				INTEGERFUNCTION* temp = va_arg(args ,INTEGERFUNCTION);
-				add((void*)temp , INTFUNC , c);
+				INTEGERFUNCTION temp = va_arg(args ,INTEGERFUNCTION);
+				add(__list__,(void*)temp , INTFUNC , c);
 			}break;
 			case  CHARFUNC:{
-				CHARACTERFUNCTION* temp = va_arg(args ,CHARACTERFUNCTION);
-				add((void*)temp , CHARFUNC , c);
+				CHARACTERFUNCTION temp = va_arg(args ,CHARACTERFUNCTION);
+				add(__list__,(void*)temp , CHARFUNC , c);
 			}break;
 			case  STRFUNC :{
-				STRINGFUNCTION* temp = va_arg(args ,STRINGFUNCTION);
-				add((void*)temp , STRFUNC , c);
+				STRINGFUNCTION temp = va_arg(args ,STRINGFUNCTION);
+				add(__list__,(void*)temp , STRFUNC , c);
 			}break; 
 		}
 		c++;
@@ -318,54 +344,63 @@ Class_List list(int count , ...)
 	return cl;
 }
 void l_append(
+		List** __list__ ,
 		Type type,
 		void* data
 )
 {
-	add(data, type , global_count++);
+	add(__list__ , data, type , global_count++);
 }
-void l_clear(void){
-	__list__ = NULL;
+void l_clear(List** __list__){
+	*__list__ = NULL;
 }
-void* exec(int idx)
+RetType exec(List* __list__ , int idx)
 {
-	if(idx > global_count)	return NULL;
+	RetType t;
+	if(idx > global_count){	
+		t.retnull = NULL;
+		return t;
+	}
 	if(idx < 0){
 		while(__list__ != NULL){
-			switch(__list__->type){
-				//case  INTFUNC :
-				//case  CHARFUNC:
-				//case  STRFUNC : 
+			switch((__list__)->type){
+				case  INTFUNC :{
+					int(*call)() = (int(*)())(__list__)->data;
+					t.retint = call();
+				}break;
+				case  CHARFUNC:
+				case  STRFUNC : 
 				case  VOIDFUNC:{
-					void (*call)() = (void(*)())__list__->data;
+					void (*call)() = (void(*)())(__list__)->data;
 					call();
 				}break; 
 			}
-			__list__ = __list__->next;
+			__list__ = (__list__)->next;
 		}
 	}else{
 		while(__list__ != NULL){
-			if(__list__->index == idx){
-				switch(__list__->type){
+			if((__list__)->index == idx){
+				switch((__list__)->type){
 					case  VOIDFUNC:{
-						void (*call)() = (void(*)())__list__->data;
+						void (*call)() = (void(*)())(__list__)->data;
 						call();
-						return NULL;
+						t.retnull = NULL;
 					}break; 
-					case  CHARFUNC:
 					case  INTFUNC :{
-						int* (*call)() = (int*(*)()) __list__->data();
-						return call();
+						int(*call)() = (int(*)())(__list__)->data;
+						t.retint = call();
 					}break;
+					case  CHARFUNC:
 					case  STRFUNC :{
-						char* (*call)() = (char*(*)()) __list__->data();
-						return call();
+						string (*call)() = (string(*)())(__list__)->data;
+						t.retstring = call();
 					}break; 
 				}
 			}
-			__list__ = __list__->next;
+			__list__ = (__list__)->next;
 		}
 	}
+	return t;
 }
 //void l_insert(void);
 void l_popval(
@@ -394,11 +429,12 @@ void l_popval(
 	}
 }
 void l_popidx(
+		List** __list__ ,
 		int idx
 		)
 {
-	List* ___temp = __list__;
-	if((___temp == NULL) || idx < 0)	return;
+	List* ___temp = *__list__;
+	if((___temp == NULL) || idx < 0 || idx > global_count)	return;
 	if((___temp)->index == idx){
 		List* tmp = ___temp;
 		___temp = ___temp->next;
@@ -406,17 +442,38 @@ void l_popidx(
 		return;
 	}
 	___temp = ___temp->next;
-	l_popidx(idx);
+	l_popidx(__list__ , idx);
 }
-void* l_get(int idx)
+RetType l_get(List* __list__ , int idx)
 {
-	if(idx > global_count)	return NULL;
-	while(__list__ != NULL){
-		if(__list__->index == idx)	return __list__->data;
-		__list__ = __list__->next;
+	RetType t;
+	if(idx > global_count){
+		t.retnull = NULL;
+		return t;
 	}
+	while(__list__ != NULL || idx < 0 || idx > global_count){
+		if((__list__)->index == idx){	
+			switch((__list__)->type){
+				case STR :
+				case CHR :{
+					t.retstring = (__list__)->data;
+				}break;
+				case INT:{
+					t.retint = *(int*)(__list__)->data;
+				}break;
+				case BOOL:{
+					t.retbool = *(int*)(__list__)->data;
+				}break;
+			}
+		
+			break;
+		}
+		__list__ = (__list__)->next;
+	}
+	return t;
 }
 bool l_search(
+		List* __list__ ,
 		int* idx ,
 		Type type ,
 		void* data
@@ -429,7 +486,7 @@ bool l_search(
 		switch(type){
 			case STR :
 			case CHR :{
-				if(data == __list__->data  ){
+				if(data == ___temp->data){
 					*idx = ___temp->index ;
 					return true;
 				}
@@ -450,10 +507,10 @@ bool l_search(
 		___temp = ___temp->next;
 	}
 }
-void l_reverse()
+void l_reverse(List** __list__)
 {
     List* prev = NULL; 
-    List* current = __list__; 
+    List* current = *__list__; 
     List* next = NULL; 
     while (current != NULL) { 
         next = current->next; 
@@ -461,52 +518,54 @@ void l_reverse()
         prev = current; 
         current = next; 
     } 
-    __list__ = prev; 
+    *__list__ = prev; 
 }
-void l_print()
+void l_print(List* __list__)
 {
-	List* ___temp = __list__;
-	if(___temp == NULL)	printf("list: NULL");
-	l_reverse();
+	if(__list__ == NULL){	
+		printf("list: NULL");
+		return ;
+	}
+	l_reverse(&__list__);
 	printf("[\n");
-	while(___temp != NULL){
-		switch(___temp->type){
+	while(__list__ != NULL){
+		switch(__list__->type){
 			case CHR:{
-				printf("\n\t'%s'" ,(___temp->data) );
+				printf("\n\t'%s'" ,(__list__->data) );
 			}break;
 			case INT:{
-				printf("\n\t%d" , *(int*)(___temp->data));
+				printf("\n\t%d" , *(int*)(__list__->data));
 			}break;
 			case STR:{
-				printf("\n\t\"%s\"" , ___temp->data);
+				printf("\n\t\"%s\"" , __list__->data);
 			}break;
 			case BOOL:{
-				printf("\n\t%s" , (___temp->data == "true") ? "true" : "false");
+				printf("\n\t%s" , (__list__->data == "true") ? "true" : "false");
 			}break;
 			case FLT :{
-				printf("\n\t%f" , *((float*)___temp->data));
+				printf("\n\t%f" , *((float*)__list__->data));
 			}break;
 			case VOIDPTR :{
 				// printing address of the void ptr
-				printf("\n\t%p" , ___temp->data);
+				printf("\n\t%p" , __list__->data);
 			}break;
 			case  INTFUNC:{
-				printf("\n\t<int function : %p><index : %d>" ,___temp->data,___temp->index);
+				printf("\n\t<int function : %p><index : %d>" ,__list__->data,__list__->index);
 			}break; 
 			case  CHARFUNC:{
-				printf("\n\t<character function : %p><index : %d>", ___temp->data,___temp->index);
+				printf("\n\t<character function : %p><index : %d>", __list__->data,__list__->index);
 			}break; 
 			case  STRFUNC :{
-				printf("\n\t<string function : %p><index : %d>", ___temp->data,___temp->index);
+				printf("\n\t<string function : %p><index : %d>", __list__->data,__list__->index);
 			}break; 
 			case  VOIDFUNC:{
-				printf("\n\t<void function : %p><index : %d>" ,___temp->data,___temp->index);
+				printf("\n\t<void function : %p><index : %d>" ,__list__->data,__list__->index);
 			}break;
 
 		}
-		___temp = ___temp->next;
-		if(___temp != NULL)	printf(",");
+		__list__ = __list__->next;
+		if(__list__ != NULL)	printf(",");
 	}
-	printf("\n]");
+	printf("\n]\n");
 }
 #endif
