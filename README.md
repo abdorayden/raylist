@@ -1,5 +1,9 @@
 # Dynamic List with Diffrent data type in C
 
+<p align="center">
+  <img src="./assets/logo.jpeg" width="350" height="350"/>
+</p>
+
 ## This is a C code that implements a linked list data structure with a variety of functions to manipulate and interact with the list. Here's a breakdown of the code:
 
 ### methods available
