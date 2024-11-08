@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <assert.h>
 
+// using list name space 
+#define USING_LIST
+
 #define LIST_C
 #include "../raylist.h"
 
@@ -19,61 +22,49 @@ void bar(void);
 void baz(void);
 
 
-#if 1
+#if 0
 int main(void){
 	// we can put pointer directly ,but we can't put value 
-	List* l = NULL ;
-	Class_List my_list = list(&l,
+	Class_List my_list = list(
 				3,
 				STR , "foo",
 				BOOL , false,
 				CHR , "A"
 			);
 	//my_list.List_Reverse();
-	my_list.List_Append(&l ,STR , "RayDen");
-	my_list.List_Append(&l ,STR , "abdo");
-	void* gett = my_list.List_Get(l , 0);
+	my_list.Append(STR , "RayDen");
+	my_list.Append(STR , "abdo");
+	void* gett = my_list.Get(2);
 	if(gett != NULL){
 		printf("gett : %s\n" , gett);
 	}
 	int idx;
 	bool _test = true;
-	if(my_list.List_Search(l , &idx , BOOL , (void*)&_test)){
+	if(my_list.Search(&idx , BOOL , (void*)&_test)){
 		printf("Found in index : %d\n" , idx);
 	}else	printf("Not Found \n");
-	my_list.List_Print(l);
-	my_list.List_Clear(&l);
-	my_list.List_Print(l);
+	my_list.Print();
+	my_list.Clear();
+	my_list.Print();
 
 	return 0;
 }
 #else
 
 int main(void){
-	List* l;
+	// to define empty list use
+	//  Class_List my_list = list(0);
 	Class_List my_list = list(
-			&l,
-			2,
-			INTFUNC  ,_add,
-			INTFUNC  ,sum
+			1,
+			VOIDFUNC ,test
 			);
 
-	my_list.List_Append(&l , VOIDFUNC ,baz);
-	my_list.List_Reverse(&l);
-	int value = my_list.List_Exec_Func(l , -1);
-	printf("value : %d" , value);
+	my_list.Append(VOIDFUNC ,baz);
+	my_list.Exec_Func(1);
 	return 0;
 }
 
 #endif
-
-int _add(){
-	return 3+3;
-}
-
-int sum(){
-	return 5+5;
-}
 
 void test(void){
 	for(int i = 0 ; i < 100 ; i++){
