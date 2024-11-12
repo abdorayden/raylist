@@ -21,26 +21,31 @@ void foo(void);
 void bar(void);
 void baz(void);
 
+// TODO: handle float type
+// TODO: handle char type
+// TODO: handle double type
 
-#if 0
+#if 1
 int main(void){
 	// we can put pointer directly ,but we can't put value 
+	float a = 4.01f;
+	char b = 'A';
 	Class_List my_list = list(
-				3,
+				4,
 				STR , "foo",
+				FLT , (void*)&a,
 				BOOL , false,
-				CHR , "A"
+				CHR , (void*)&b
 			);
 	//my_list.List_Reverse();
 	my_list.Append(STR , "RayDen");
 	my_list.Append(STR , "abdo");
-	void* gett = my_list.Get(2);
-	if(gett != NULL){
-		printf("gett : %s\n" , gett);
-	}
+	char gett = *(char*)my_list.Get(3);
+	printf("gett : %c\n" , gett);
+
 	int idx;
 	bool _test = true;
-	if(my_list.Search(&idx , BOOL , (void*)&_test)){
+	if(my_list.Search(&idx , FLT , (void*)&a)){
 		printf("Found in index : %d\n" , idx);
 	}else	printf("Not Found \n");
 	my_list.Print();

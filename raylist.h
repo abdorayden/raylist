@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2023 Ray Den						*
+*			Copyright (c) 2023 Ray Den	raylist v1.0.1				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -21,6 +21,9 @@
 *												*
  ************************************************************************************************/
 
+/*
+ * 	
+ * */
 
 #ifndef LIST_H
 #define LIST_H
@@ -388,7 +391,8 @@ Class_List list(int count , ...)
 			}break;
 			case FLT:{
 				void* temp = va_arg(args , void*);
-				add(&__list__,temp , FLT , c);
+				float* ttemp = (float*)temp;
+				add(&__list__,ttemp , FLT , c);
 			}break;
 			case VOIDPTR :{
 				void* temp = va_arg(args , void*);
@@ -510,14 +514,17 @@ static void* local_l_get(List* __list__ , int idx)
 	while(__list__ != NULL || idx < 0 || idx > global_count){
 		if((__list__)->index == idx){	
 			switch((__list__)->type){
-				case STR :
-				case CHR :{
+				case STR :{
 					return (__list__)->data;
 				}break;
+				case CHR :
 				case INT:{
 					return (__list__)->data;
 				}break;
 				case BOOL:{
+					return (__list__)->data;
+				}break;
+				case FLT:{
 					return (__list__)->data;
 				}break;
 			}
@@ -542,15 +549,21 @@ static bool local_l_search(
 		return false;
 	while(___temp != NULL){
 		switch(type){
-			case STR :
-			case CHR :{
+			case STR :{
 				if(data == ___temp->data){
 					*idx = ___temp->index ;
 					return true;
 				}
 			}break;
+			case CHR :
 			case INT:{
 				if(*((int*)data) == (*(int*)___temp->data)){
+					*idx = ___temp->index ;
+				 	return true;
+				}
+			}break;
+			case FLT: {
+				if(*(float*)data == *(float*)___temp->data){
 					*idx = ___temp->index ;
 				 	return true;
 				}
@@ -600,7 +613,7 @@ void l_print()
 	while(__list__ != NULL){
 		switch((__list__)->type){
 			case CHR:{
-				printf("\n\t'%s'" ,((__list__)->data) );
+				printf("\n\t'%c'" ,*(char*)((__list__)->data) );
 			}break;
 			case INT:{
 				printf("\n\t%d" , *(int*)((__list__)->data));
