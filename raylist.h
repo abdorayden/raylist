@@ -21,14 +21,20 @@
 *												*
  ************************************************************************************************/
 
-/*
- * 	
- * */
+// TODO : add filter 	function
+// TODO : add map	function
+// TODO : add insert	function
+// TODO : add thread	function 
+// TODO : add thread	type
+// TODO : add sort	function
+
+// TODO : handle return value of the function in exec function
 
 #ifndef LIST_H
 #define LIST_H
 
-// TODO: handle call back functions type
+// to check if raylist is included
+#define LIST_INCLUDED
 
 // 	typeof pragma returns string contained type of variable
 // 	Example :
@@ -53,10 +59,13 @@
     )
 
 // boolean enum
+#ifndef LBOOL
 typedef enum{
 	false,
 	true = !(false)
 }bool;
+#define LBOOL bool
+#endif
 
 // Type enum contained bunch of types helps functions any variables type will work for
 // STR for strings BOOL for boolean ... 
@@ -66,6 +75,13 @@ typedef enum{
 	BOOL   ,	// bool type
 	INT    , 	// int type
 	FLT    , 	// float type
+	
+	VCHR = 0, 	// variable char type
+	VSTR    , 	// variable string type
+	VBOOL   ,	// variable bool type
+	VINT    , 	// variable int type
+	VFLT    , 	// variable float type
+
 	VOIDPTR,	// void pointer type
 
 	VOIDFUNC,
@@ -73,6 +89,14 @@ typedef enum{
 	CHARFUNC,
 	STRFUNC
 }Type;
+
+typedef enum{
+	FINE = 0,
+	LIST_INDEX_OUT_OF_RANGE,
+	LIST_EMPTY
+}ListError;
+
+static ListError status = FINE;
 
 typedef char* string;
 
@@ -86,16 +110,20 @@ typedef char* string;
 
 typedef void 	(*VOIDFUNCTION		)(void);
 typedef int  	(*INTEGERFUNCTION  	)(void);
-typedef bool 	(*BOOLEANFUNCTION  	)(void);
+typedef LBOOL 	(*BOOLEANFUNCTION  	)(void);
 typedef char 	(*CHARACTERFUNCTION	)(void);
 typedef string 	(*STRINGFUNCTION 	)(void);
 
-typedef struct list {
+struct list {
 	int 		index;
-	Type 		type;
-	void* 		data;
-	struct list* 	next;
-}List;
+	Type 		type ;
+	void* 		data ;
+	struct list* 	next ;
+};
+
+typedef struct list List;
+
+#if 0
 
 // unused
 // TODO: local for better solution in return data type
@@ -103,11 +131,12 @@ typedef union {
 	int    retint;
 	char   retchar;
 	float  retfloat;
-	bool   retbool;
+	LBOOL   retbool;
 	string retstring;
 	void*  retnull;
 }RetType;
 
+#endif
 // global count for index
 static int global_count = 0;
 
@@ -158,7 +187,7 @@ typedef struct {
 	 *		else 							// handle
 	 *
 	 * */
-	bool (*List_Search)(
+	LBOOL (*List_Search)(
 			int* ,
 			Type ,
 			void* 
@@ -207,13 +236,18 @@ typedef struct {
 			void
 	);
 
-	// TODO : Impelemnt list_exec_func 
 	void* (*List_Exec_Func)(
 			int idx
 	);
 
 	// clear list
 	void (*List_Clear)(
+			void
+	);
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*List_Get_Error)(
 			void
 	);
 #else
@@ -248,7 +282,7 @@ typedef struct {
 	 *		else 							// handle
 	 *
 	 * */
-	bool (*Search)(
+	LBOOL (*Search)(
 			int* ,
 			Type ,
 			void* 
@@ -297,13 +331,18 @@ typedef struct {
 			void
 	);
 
-	// TODO : Impelemnt list_exec_func 
 	void* (*Exec_Func)(
 			int idx
 	);
 
 	// clear list
 	void (*Clear)(
+			void
+	);
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Get_Error)(
 			void
 	);
 #endif
@@ -326,13 +365,16 @@ void l_append(
 		Type type,
 		void* data
 );
-void l_popidx(
+void l_delete(
 		int idx
+);
+string l_geterror(
+		void
 );
 void* l_get(
 		int idx
 );
-bool l_search(
+LBOOL l_search(
 		int*,
 		Type,
 		void*
@@ -376,7 +418,6 @@ Class_List list(int count , ...)
 				add(&__list__,temp, CHR , c);
 			}break;
 			case INT:{
-				 // TODO: handle integer
 				void* temp= va_arg(args , void*);
 				add(&__list__,temp, INT , c);
 			}break;
@@ -417,25 +458,28 @@ Class_List list(int count , ...)
 		}
 		c++;
 	}
+	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
 	cl.List_Append = l_append;
-	cl.List_Del_Index = l_popidx;
+	cl.List_Del_Index = l_delete;
 	cl.List_Get = l_get;
 	cl.List_Search = l_search;
 	cl.List_Reverse = l_reverse;
 	cl.List_Print = l_print;
 	cl.List_Exec_Func = exec;
 	cl.List_Clear = l_clear;
+	cl.List_Get_Error = l_geterror;
 #else
 	cl.Append = l_append;
-	cl.Del_Index = l_popidx;
+	cl.Del_Index = l_delete;
 	cl.Get = l_get;
 	cl.Search = l_search;
 	cl.Reverse = l_reverse;
 	cl.Print = l_print;
 	cl.Exec_Func = exec;
 	cl.Clear = l_clear;
+	cl.Get_Error = l_geterror;
 #endif
 	return cl;
 }
@@ -444,6 +488,7 @@ void l_append(
 		void* data
 )
 {
+	if(status != FINE) status = FINE;
 	add(&__list__ , data, type , global_count++);
 }
 void l_clear(){
@@ -452,17 +497,21 @@ void l_clear(){
 static void* local_exec(List* __list__ ,int idx)
 {
 	if(idx > global_count){	
+		status = LIST_INDEX_OUT_OF_RANGE;
 		return NULL;
+	
+	}else if(__list__ == NULL){
+		status = LIST_EMPTY;
+		return NULL;
+	}else{
+		status = FINE;
 	}
 	if(idx < 0){
 		while(__list__ != NULL){
 			switch((__list__)->type){
-				case  CHARFUNC:
-				case  STRFUNC : 
 				case  VOIDFUNC:{
 					void (*call)() = (void(*)())(__list__)->data;
 					call();
-					return NULL;
 				}break; 
 			}
 			__list__ = (__list__)->next;
@@ -471,6 +520,10 @@ static void* local_exec(List* __list__ ,int idx)
 		while(__list__ != NULL){
 			if((__list__)->index == idx){
 				switch((__list__)->type){
+					case STRFUNC : {
+						string (*call)() = ((string(*)())(__list__)->data);
+						return (char*)call();
+					}break;
 					case  VOIDFUNC:{
 						void (*call)() = (void(*)())(__list__)->data;
 						call();
@@ -481,6 +534,7 @@ static void* local_exec(List* __list__ ,int idx)
 			__list__ = (__list__)->next;
 		}
 	}
+	return NULL;
 }
 
 void* exec(int idx){
@@ -492,26 +546,54 @@ static void local_l_popidx(
 		)
 {
 	List* ___temp = *__list__;
-	while((___temp != NULL) || idx > 0 || idx < global_count){
+	if(___temp == NULL){
+		status = LIST_EMPTY;
+		return;
+	}
+	if(idx > global_count || idx < 0)
+	{
+		status = LIST_INDEX_OUT_OF_RANGE;
+		return;
+	}
+	status = FINE;
+	while(___temp != NULL){
 		if((___temp)->index == idx){
 			List* tmp = ___temp;
 			___temp = ___temp->next;
 			free(tmp);
+			global_count--;
 			return;
 		}
+		else if ((___temp)->index > idx)	(___temp)->index--;
 		___temp = ___temp->next;
 	}
 }
-void l_popidx(int idx)
+void l_delete(int idx)
 {
 	local_l_popidx(&__list__ , idx);
 }
+
+string l_geterror()
+{
+	switch(status){
+		case LIST_INDEX_OUT_OF_RANGE : return "[ERROR] list index out of range";
+		case LIST_EMPTY : return "[ERROR] list empty";
+		default : return NULL;
+	}
+}
+
 static void* local_l_get(List* __list__ , int idx)
 {
-	if(idx > global_count){
+	if(__list__ == NULL){
+		status = LIST_EMPTY;
 		return NULL;
 	}
-	while(__list__ != NULL || idx < 0 || idx > global_count){
+	if(idx > global_count || idx < 0){
+		status = LIST_INDEX_OUT_OF_RANGE;
+		return NULL;
+	}
+	status = FINE;
+	while(__list__ != NULL){
 		if((__list__)->index == idx){	
 			switch((__list__)->type){
 				case STR :{
@@ -537,7 +619,7 @@ static void* local_l_get(List* __list__ , int idx)
 void* l_get(int idx){
 	return local_l_get(__list__ , idx);
 }
-static bool local_l_search(
+static LBOOL local_l_search(
 		List* __list__,
 		int* idx ,
 		Type type ,
@@ -545,8 +627,11 @@ static bool local_l_search(
 )
 {
 	List* ___temp = __list__;
-	if(___temp == NULL)
+	if(___temp == NULL){
+		status = LIST_EMPTY;
 		return false;
+	}
+	status = FINE;
 	while(___temp != NULL){
 		switch(type){
 			case STR :{
@@ -569,7 +654,7 @@ static bool local_l_search(
 				}
 			}break;
 			case BOOL:{
-				if(*(bool*)data){
+				if(*(LBOOL*)data){
 					*idx = ___temp->index ;
 				 	return true;
 				}
@@ -578,7 +663,7 @@ static bool local_l_search(
 		___temp = ___temp->next;
 	}
 }
-bool l_search(
+LBOOL l_search(
 		int* idx ,
 		Type type ,
 		void* data
@@ -588,16 +673,21 @@ bool l_search(
 }
 static void local_l_reverse(List** __list__)
 {
-    List* prev = NULL; 
-    List* current = *__list__; 
-    List* next = NULL; 
-    while (current != NULL) { 
-        next = current->next; 
-        current->next = prev; 
-        prev = current; 
-        current = next; 
-    } 
-    *__list__ = prev; 
+	if((*__list__) == NULL){
+		status = LIST_EMPTY;
+		return;
+	}
+	status = FINE;
+	List* prev = NULL; 
+	List* current = *__list__; 
+	List* next = NULL; 
+	while (current != NULL) { 
+	    next = current->next; 
+	    current->next = prev; 
+	    prev = current; 
+	    current = next; 
+	} 
+	*__list__ = prev; 
 }
 void l_reverse(){
 	local_l_reverse(&__list__);
@@ -605,9 +695,11 @@ void l_reverse(){
 void l_print()
 {
 	if(__list__ == NULL){	
-		printf("list: NULL");
+		printf("[NULL]");
+		status = LIST_EMPTY;
 		return ;
 	}
+	status = FINE;
 	local_l_reverse(&__list__);
 	printf("[\n");
 	while(__list__ != NULL){
