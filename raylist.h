@@ -60,11 +60,18 @@
 
 // boolean enum
 #ifndef LBOOL
+
 typedef enum{
 	false,
 	true = !(false)
 }bool;
 #define LBOOL bool
+
+#endif
+
+
+#ifndef LALLOC
+#define LALLOC	malloc
 #endif
 
 // Type enum contained bunch of types helps functions any variables type will work for
@@ -93,6 +100,7 @@ typedef enum{
 typedef enum{
 	FINE = 0,
 	LIST_INDEX_OUT_OF_RANGE,
+	LIST_MEMALLOC,
 	LIST_EMPTY
 }ListError;
 
@@ -390,7 +398,12 @@ void l_print(
 #ifdef LIST_C
 
 static void add(List** __list__ , void* val , Type t, int idx){
-	List* temp = malloc(sizeof(List));
+	List* temp = LALLOC(sizeof(List));
+	if(temp == NULL)
+	{
+		status = LIST_MEMALLOC;
+		return;
+	}
 	temp->data = val;               
 	temp->type = t;                 
 	temp->index = idx;              
@@ -578,6 +591,7 @@ string l_geterror()
 	switch(status){
 		case LIST_INDEX_OUT_OF_RANGE : return "[ERROR] list index out of range";
 		case LIST_EMPTY : return "[ERROR] list empty";
+		case LIST_MEMALLOC : return "[ERROR] list allocating memory";
 		default : return NULL;
 	}
 }
