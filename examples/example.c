@@ -51,7 +51,7 @@ int main(void){
 	Class_List ll = list(0);
 	printf("%s\n" , ll.Get_Error());
 	ll.Append(STR , "Hello  World");
-	if(ll.Get_Error() == NULL) printf("status is fine ");
+	if(ll.Get_Error() == NULL) printf("status is fine \n");
 
 	//int idx;
 	//bool _test = true;
@@ -59,8 +59,8 @@ int main(void){
 	//	printf("Found in index : %d\n" , idx);
 	//}else	printf("Not Found \n");
 	//my_list.Print();
-	//my_list.Clear();
-	//my_list.Print();
+	my_list.Clear();
+	my_list.Print();
 
 	return 0;
 }

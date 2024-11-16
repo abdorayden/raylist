@@ -108,6 +108,12 @@ static ListError status = FINE;
 
 typedef char* string;
 
+typedef void 	(*VOIDFUNCTION		)(void);
+typedef int  	(*INTEGERFUNCTION  	)(void);
+typedef LBOOL 	(*BOOLEANFUNCTION  	)(void);
+typedef char 	(*CHARACTERFUNCTION	)(void);
+typedef string 	(*STRINGFUNCTION 	)(void);
+
 /*
  *	Linked List struct
  *		index : index of single list
@@ -115,12 +121,6 @@ typedef char* string;
  *		data  : the place we store the address of our variables 
  *		next  : pointing to next list
  * */
-
-typedef void 	(*VOIDFUNCTION		)(void);
-typedef int  	(*INTEGERFUNCTION  	)(void);
-typedef LBOOL 	(*BOOLEANFUNCTION  	)(void);
-typedef char 	(*CHARACTERFUNCTION	)(void);
-typedef string 	(*STRINGFUNCTION 	)(void);
 
 struct list {
 	int 		index;
@@ -131,9 +131,9 @@ struct list {
 
 typedef struct list List;
 
+// unused
 #if 0
 
-// unused
 // TODO: local for better solution in return data type
 typedef union {
 	int    retint;
@@ -505,6 +505,13 @@ void l_append(
 	add(&__list__ , data, type , global_count++);
 }
 void l_clear(){
+	List* current = __list__;
+	List* temp;
+	while (current != NULL) {
+		temp = current->next; 
+		free(current);        
+		current = temp;       
+	}
 	init(&__list__);
 }
 static void* local_exec(List* __list__ ,int idx)
