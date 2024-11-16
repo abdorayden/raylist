@@ -151,6 +151,9 @@ static int global_count = 0;
 // Global list variable 
 static List* __list__ = NULL;
 
+// filter callback function 
+typedef LBOOL (*FILTERCALLBACK)(void*);
+
 /*
  *	Class_List struct act like class all thouse functions point to other functions 
  *
@@ -179,6 +182,26 @@ typedef struct {
 	void (*List_Append)(
 			Type type,
 			void* data
+	);
+	/*
+	 *	List_Filter function takes function callback that returns boolean and filter all elements from the list
+	 *
+	 *	Example : 
+	 *	int check_mod_of_num(void* tch){
+	 *		return (*(int*)tch % 2);
+	 *	}
+	 *	
+	 *					before : 	[
+	 *								3,2,7,5,1
+	 *							]
+	 *	my_list.List_Filter(check_mod_of_num , INT);
+	 *					after : 	[
+	 *								2
+	 *							]
+	 * */
+	void (*List_Filter)(
+			FILTERCALLBACK,
+			Type
 	);
 	/*
 	 * 	List_Search function return true if the data has been found and will store index of the data in int* parameter else will return false
@@ -276,6 +299,26 @@ typedef struct {
 			void* data
 	);
 	/*
+	 *	List_Filter function takes function callback that returns boolean and filter all elements from the list
+	 *
+	 *	Example : 
+	 *	int check_mod_of_num(void* tch){
+	 *		return (*(int*)tch % 2);
+	 *	}
+	 *	
+	 *					before : 	[
+	 *								3,2,7,5,1
+	 *							]
+	 *	my_list.List_Filter(check_mod_of_num , INT);
+	 *					after : 	[
+	 *								2
+	 *							]
+	 * */
+	void (*Filter)(
+			FILTERCALLBACK,
+			Type
+	);
+	/*
 	 * 	Search function return true if the data has been found and will store index of the data in int* parameter else will return false
 	 *
 	 *	Search(
@@ -360,6 +403,8 @@ Class_List list(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
+
+void	l_filter(FILTERCALLBACK callback , Type type);
 
 void l_clear(
 		void
@@ -483,6 +528,7 @@ Class_List list(int count , ...)
 	cl.List_Exec_Func = exec;
 	cl.List_Clear = l_clear;
 	cl.List_Get_Error = l_geterror;
+	cl.List_Filter = l_filter;
 #else
 	cl.Append = l_append;
 	cl.Del_Index = l_delete;
@@ -493,6 +539,7 @@ Class_List list(int count , ...)
 	cl.Exec_Func = exec;
 	cl.Clear = l_clear;
 	cl.Get_Error = l_geterror;
+	cl.Filter = l_filter;
 #endif
 	return cl;
 }
@@ -579,10 +626,10 @@ static void local_l_popidx(
 	while(___temp != NULL){
 		if((___temp)->index == idx){
 			List* tmp = ___temp;
-			___temp = ___temp->next;
+			if(___temp->next != NULL)
+				___temp = ___temp->next;
 			free(tmp);
 			global_count--;
-			return;
 		}
 		else if ((___temp)->index > idx)	(___temp)->index--;
 		___temp = ___temp->next;
@@ -593,6 +640,19 @@ void l_delete(int idx)
 	local_l_popidx(&__list__ , idx);
 }
 
+void l_filter(FILTERCALLBACK callback , Type type){
+	List* ___temp = __list__;
+	while(___temp != NULL){
+		if(___temp->type == type){
+			if(!callback(___temp->data)){
+				l_delete(___temp->index);
+			}
+		}else{
+			l_delete(___temp->index);
+		}
+		___temp = ___temp->next;
+	}
+}
 string l_geterror()
 {
 	switch(status){
@@ -726,24 +786,24 @@ void l_print()
 	while(__list__ != NULL){
 		switch((__list__)->type){
 			case CHR:{
-				printf("\n\t'%c'" ,*(char*)((__list__)->data) );
+				printf("\n\t[%d] '%c'",(__list__)->index  ,*(char*)((__list__)->data) );
 			}break;
 			case INT:{
-				printf("\n\t%d" , *(int*)((__list__)->data));
+				printf("\n\t[%d] %d",(__list__)->index  , *(int*)((__list__)->data));
 			}break;
 			case STR:{
-				printf("\n\t\"%s\"" , (__list__)->data);
+				printf("\n\t[%d] \"%s\"",(__list__)->index  , (__list__)->data);
 			}break;
 			case BOOL:{
-				printf("\n\t%s" , ((__list__)->data == "true") ? "true" : "false");
+				printf("\n\t[%d] %s",(__list__)->index  , ((__list__)->data == "true") ? "true" : "false");
 			}break;
 			case FLT :{
-				printf("\n\t%f" , *((float*)(__list__)->data));
+				printf("\n\t[%d] %f",(__list__)->index  , *((float*)(__list__)->data));
 			}break;
-			case VOIDPTR :{
-				// printing address of the void ptr
-				printf("\n\t%p" , (__list__)->data);
-			}break;
+			//case VOIDPTR :{
+			//	// printing address of the void ptr
+			//	printf("\n\t[%d] %p",(__list__)->index , (__list__)->data);
+			//}break;
 			case  INTFUNC:{
 				printf("\n\t<int function : %p><index : %d>" ,(__list__)->data,(__list__)->index);
 			}break; 

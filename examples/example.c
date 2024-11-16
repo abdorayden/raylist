@@ -28,30 +28,37 @@ void baz(void);
 // TODO: handle char type
 // TODO: handle double type
 
+LBOOL callback(void* handle){
+	if((*(int*)handle)%2 != 0)	return true;
+	else				return false;
+}
+
 #if 1
 int main(void){
 	// we can put pointer directly ,but we can't put value 
-	float a = 4.01f;
-	char b = 'z';
+	int check = 5;
 	Class_List my_list = list(
-				4,
-				STR , "foo",
-				FLT , (void*)&a,
+				3,
 				BOOL , false,
-				VCHR , (void*)&b
+				STR , "foo",
+				INT , (void*)&check
 			);
+	// test filter function
+	my_list.Filter(callback , INT);
+	//my_list.Del_Index(0);
+	my_list.Print();
 	//my_list.List_Reverse();
-	my_list.Append(STR , "RayDen");
-	my_list.Append(STR , "abdo");
-	my_list.Del_Index(0);
-	float gett = *(float*)my_list.Get(0);
-	printf("gett : %f\n" , gett);
+	//my_list.Append(STR , "RayDen");
+	//my_list.Append(STR , "abdo");
+	//my_list.Del_Index(0);
+	//float gett = *(float*)my_list.Get(0);
+	//printf("gett : %f\n" , gett);
 
 	// test get error funtion
-	Class_List ll = list(0);
-	printf("%s\n" , ll.Get_Error());
-	ll.Append(STR , "Hello  World");
-	if(ll.Get_Error() == NULL) printf("status is fine \n");
+	//Class_List ll = list(0);
+	//printf("%s\n" , ll.Get_Error());
+	//ll.Append(STR , "Hello  World");
+	//if(ll.Get_Error() == NULL) printf("status is fine \n");
 
 	//int idx;
 	//bool _test = true;
@@ -60,7 +67,7 @@ int main(void){
 	//}else	printf("Not Found \n");
 	//my_list.Print();
 	my_list.Clear();
-	my_list.Print();
+	//my_list.Print();
 
 	return 0;
 }
