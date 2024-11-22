@@ -29,7 +29,7 @@ void baz(void);
 // TODO: handle double type
 
 LBOOL callback(void* handle){
-	if((*(int*)handle)%2 != 0)	return true;
+	if((*(int*)handle)%2 == 0)	return true;
 	else				return false;
 }
 
@@ -37,11 +37,14 @@ LBOOL callback(void* handle){
 int main(void){
 	// we can put pointer directly ,but we can't put value 
 	int check = 5;
+	int check2 = 6;
+	int check3 = 8;
 	Class_List my_list = list(
-				3,
-				BOOL , false,
+				4,
+				INT , (void*)&check,
 				STR , "foo",
-				INT , (void*)&check
+				INT , (void*)&check2,
+				INT , (void*)&check3
 			);
 	// test filter function
 	my_list.Filter(callback , INT);

@@ -83,9 +83,7 @@ typedef enum{
 	INT    , 	// int type
 	FLT    , 	// float type
 	
-	VCHR = 0, 	// variable char type
-	VSTR    , 	// variable string type
-	VBOOL   ,	// variable bool type
+	VCHR    , 	// variable char type
 	VINT    , 	// variable int type
 	VFLT    , 	// variable float type
 
@@ -152,6 +150,11 @@ static int global_count = 0;
 static List* __list__ = NULL;
 
 // filter callback function 
+typedef enum{
+	ALL,  	// delete all types 
+	ONLY	// only type
+}Filter_Flag;
+
 typedef LBOOL (*FILTERCALLBACK)(void*);
 
 /*
@@ -442,19 +445,90 @@ void l_print(
 
 #ifdef LIST_C
 
-static void add(List** __list__ , void* val , Type t, int idx){
+static void add_voidptr(
+		List** __list__ , 
+		void* val , 
+		Type t, 
+		int idx
+){
 	List* temp = LALLOC(sizeof(List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = val;               
+	temp->data = val;  
 	temp->type = t;                 
 	temp->index = idx;              
 	temp->next = *__list__;                
 	*__list__ = temp;                      
 }
+static void add_int(
+		List** __list__ , 
+		int val , 
+		Type t, 
+		int idx
+){
+	List* temp = LALLOC(sizeof(List));
+	if(temp == NULL)
+	{
+		status = LIST_MEMALLOC;
+		return;
+	}
+	temp->data = LALLOC(sizeof(int));
+	*(int*)temp->data = val;
+	temp->type = t;                 
+	temp->index = idx;              
+	temp->next = *__list__;                
+	*__list__ = temp;                      
+}
+
+static void add_char(
+		List** __list__ , 
+		char val , 
+		Type t, 
+		int idx
+){
+	List* temp = LALLOC(sizeof(List));
+	if(temp == NULL)
+	{
+		status = LIST_MEMALLOC;
+		return;
+	}
+	temp->data = LALLOC(sizeof(char));
+	*(char*)temp->data = val;
+	temp->type = t;                 
+	temp->index = idx;              
+	temp->next = *__list__;                
+	*__list__ = temp;                      
+}
+
+static void add_float(
+		List** __list__ , 
+		float val , 
+		Type t, 
+		int idx
+){
+	List* temp = LALLOC(sizeof(List));
+	if(temp == NULL)
+	{
+		status = LIST_MEMALLOC;
+		return;
+	}
+	temp->data = LALLOC(sizeof(float));
+	*(float*)(temp->data) = val;
+	temp->type = t;                 
+	temp->index = idx;              
+	temp->next = *__list__;                
+	*__list__ = temp;                      
+}
+
+#define add(l , v , t , i) _Generic((v) ,	 	\
+			int : add_int,			\
+			char : add_char,		\
+			float : add_float,		\
+			default : add_voidptr		\
+		)(l , v , t , i);
 
 static void init(List** l){
 	*l = NULL; 
@@ -543,6 +617,13 @@ Class_List list(int count , ...)
 #endif
 	return cl;
 }
+
+#define LAppend(t , d) _Generic((d) , 		\
+			int : add_int,		\
+			char : add_char,	\
+			float : add_float	\
+		)(&__list__ , d , t  , global_count++);
+
 void l_append(
 		Type type,
 		void* data
@@ -653,6 +734,7 @@ void l_filter(FILTERCALLBACK callback , Type type){
 		___temp = ___temp->next;
 	}
 }
+
 string l_geterror()
 {
 	switch(status){
@@ -673,28 +755,14 @@ static void* local_l_get(List* __list__ , int idx)
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return NULL;
 	}
+	List* local_list = __list__;
 	status = FINE;
-	while(__list__ != NULL){
-		if((__list__)->index == idx){	
-			switch((__list__)->type){
-				case STR :{
-					return (__list__)->data;
-				}break;
-				case CHR :
-				case INT:{
-					return (__list__)->data;
-				}break;
-				case BOOL:{
-					return (__list__)->data;
-				}break;
-				case FLT:{
-					return (__list__)->data;
-				}break;
-			}
-		
+	while(local_list != NULL){
+		if((local_list)->index == idx){	
+			return (local_list)->data;
 			break;
 		}
-		__list__ = (__list__)->next;
+		local_list = (local_list)->next;
 	}
 }
 void* l_get(int idx){
@@ -780,46 +848,57 @@ void l_print()
 		status = LIST_EMPTY;
 		return ;
 	}
+	List* local_list = __list__;
 	status = FINE;
-	local_l_reverse(&__list__);
+	local_l_reverse(&local_list);
 	printf("[\n");
-	while(__list__ != NULL){
-		switch((__list__)->type){
+	while(local_list != NULL){
+		switch((local_list)->type){
 			case CHR:{
-				printf("\n\t[%d] '%c'",(__list__)->index  ,*(char*)((__list__)->data) );
+				printf("\n\t[%d] '%c'",(local_list)->index  ,(*(char*)(local_list)->data) );
 			}break;
 			case INT:{
-				printf("\n\t[%d] %d",(__list__)->index  , *(int*)((__list__)->data));
+				printf("\n\t[%d] %d",(local_list)->index  ,(*(int*)(local_list)->data) );
+			}break;
+			case FLT:{
+				printf("\n\t[%d] %f",(local_list)->index  ,(*(float*)(local_list)->data) );
+			}break;
+
+			case VCHR:{
+				printf("\n\t[%d] '%c'",(local_list)->index  ,*(char*)((local_list)->data) );
+			}break;
+			case VINT:{
+				printf("\n\t[%d] %d",(local_list)->index  , *(int*)((local_list)->data));
 			}break;
 			case STR:{
-				printf("\n\t[%d] \"%s\"",(__list__)->index  , (__list__)->data);
+				printf("\n\t[%d] \"%s\"",(local_list)->index  , (local_list)->data);
 			}break;
 			case BOOL:{
-				printf("\n\t[%d] %s",(__list__)->index  , ((__list__)->data == "true") ? "true" : "false");
+				printf("\n\t[%d] %s",(local_list)->index  , ((local_list)->data == "true") ? "true" : "false");
 			}break;
-			case FLT :{
-				printf("\n\t[%d] %f",(__list__)->index  , *((float*)(__list__)->data));
+			case VFLT :{
+				printf("\n\t[%d] %f",(local_list)->index  , *((float*)(local_list)->data));
 			}break;
 			//case VOIDPTR :{
 			//	// printing address of the void ptr
-			//	printf("\n\t[%d] %p",(__list__)->index , (__list__)->data);
+			//	printf("\n\t[%d] %p",(local_list)->index , (local_list)->data);
 			//}break;
 			case  INTFUNC:{
-				printf("\n\t<int function : %p><index : %d>" ,(__list__)->data,(__list__)->index);
+				printf("\n\t<int function : %p><index : %d>" ,(local_list)->data,(local_list)->index);
 			}break; 
 			case  CHARFUNC:{
-				printf("\n\t<character function : %p><index : %d>", (__list__)->data,(__list__)->index);
+				printf("\n\t<character function : %p><index : %d>", (local_list)->data,(local_list)->index);
 			}break; 
 			case  STRFUNC :{
-				printf("\n\t<string function : %p><index : %d>", (__list__)->data,(__list__)->index);
+				printf("\n\t<string function : %p><index : %d>", (local_list)->data,(local_list)->index);
 			}break; 
 			case  VOIDFUNC:{
-				printf("\n\t<void function : %p><index : %d>" ,(__list__)->data,(__list__)->index);
+				printf("\n\t<void function : %p><index : %d>" ,(local_list)->data,(local_list)->index);
 			}break;
 
 		}
-		(__list__) = (__list__)->next;
-		if((__list__) != NULL)	printf(",");
+		(local_list) = (local_list)->next;
+		if((local_list) != NULL)	printf(",");
 	}
 	printf("\n]\n");
 }
