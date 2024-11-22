@@ -21,12 +21,12 @@
 *												*
  ************************************************************************************************/
 
-// TODO : add filter 	function
 // TODO : add map	function
 // TODO : add insert	function
 // TODO : add thread	function 
 // TODO : add thread	type
 // TODO : add sort	function
+// TODO : exec function syncronic
 
 // TODO : handle return value of the function in exec function
 

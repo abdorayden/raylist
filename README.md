@@ -8,20 +8,109 @@
 
 ### methods available
 
-#### list(int count, ...): 
-a variadic function that creates a new linked list with count elements, taking a variable number of arguments of different types.
-#### List_Append(Type type, void* data): 
-appends a new node to the end of the list with the given type and data.
-#### List_Pop_Index(List** _list, int idx): 
-removes the node at the specified idx from the list.
-#### List_Get(int idx): 
-returns the data at the specified idx from the list.
-#### List_Search(int* idx, void* data): 
-searches for the specified data in the list and returns the index if found.
-#### List_Reverse(void): 
-reverses the order of the nodes in the list.
-#### List_Print(void): 
-prints the contents of the list.
+## list(int count, ...): 
+```c
+Class_List list(
+		int count , 	// number of data you
+		... 		// data : <TYPE> , <VALUE>
+);
+```
+## List_Append(Type type, void* data): 
+```c
+	/*
+	 *	List_Append function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	List_Append(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *
+	 *	Example :
+	 *		my_list.List_Append(STR , "Hello World");
+	 *
+	 * */
+	void (*List_Append)(
+			Type type,
+			void* data
+	);
+```
+## List_Del_Index(List** _list, int idx): 
+```c
+	/*
+	 *	List_Del_Index function takes index and delete it from the linked list
+	 *
+	 *	List_Del_Index(
+	 *		int : the index that we want to delete
+	 *	)
+	 *
+	 *	Example :
+	 *		my_list.List_Del_Index(3);
+	 *
+	 * */
+	void (*List_Del_Index)(
+			int idx 
+	);
+```
+## List_Get(int idx): 
+```c
+	/*
+	 *	List_Get function takes index parameter and will return void* data  
+	 *
+	 *	List_Del_Index(
+	 *		int : the index of the data we want to get
+	 *	)
+	 *
+	 *	Example :
+	 *		void* d = my_list.List_Get(2);
+	 *		the data pointer in d variable now 
+	 *
+	 * */
+	void* (*List_Get)(
+			int idx
+	);
+```
+## List_Search(int* idx,Type type, void* data): 
+```c
+	/*
+	 * 	List_Search function return true if the data has been found and will store index of the data in int* parameter else will return false
+	 *
+	 *	List_Search(
+	 *		int* : integer pointer variable to store index of the data we found
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 *	)
+	 *
+	 *	Example :
+	 *		int var;
+	 *		if(my_list.List_Search(&var, STR , "Hello World"))	// handle (var contained the index of the data)
+	 *		else 							// handle
+	 *
+	 * */
+	LBOOL (*List_Search)(
+			int* ,
+			Type ,
+			void* 
+	);
+```
+## List_Reverse(void): 
+```c
+	/*
+	 *	List_Reverse function will reverse the list 
+	 *
+	 * */
+	void (*List_Reverse)(
+			void
+	);
+```
+## List_Print(void): 
+```c
+	/*
+	 *	List_Print function will print all our data in standerd output 
+	 * */
+	void (*List_Print)(
+			void
+	);
+```
 
 Overall, this code provides a basic implementation of a linked list data structure with various functions to manipulate and interact with the list.
 
@@ -92,5 +181,6 @@ int main(void){
 	// test filter function
     // the filter function will filter all the value using the callback function that you wrote
 	my_list.Filter(callback , INT);
+}
 ```
 
