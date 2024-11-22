@@ -39,16 +39,13 @@ int main(void){
 	int check = 5;
 	int check2 = 6;
 	int check3 = 8;
-	Class_List my_list = list(
-				4,
-				INT , (void*)&check,
-				STR , "foo",
-				INT , (void*)&check2,
-				INT , (void*)&check3
-			);
+	Class_List my_list = list(0);
+	my_list.Append(VINT , (void*)&check );
+	my_list.Append(VINT , (void*)&check2);
+	my_list.Append(VINT , (void*)&check3);
 	// test filter function
-	my_list.Filter(callback , INT);
-	//my_list.Del_Index(0);
+	//my_list.Filter(callback , VINT);
+	my_list.Del_Index(0);
 	my_list.Print();
 	//my_list.List_Reverse();
 	//my_list.Append(STR , "RayDen");

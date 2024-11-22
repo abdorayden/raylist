@@ -22,7 +22,6 @@
  ************************************************************************************************/
 
 // TODO : add map	function
-// TODO : add insert	function
 // TODO : add thread	function 
 // TODO : add thread	type
 // TODO : add sort	function
@@ -58,11 +57,16 @@
     default	: "unknown"	  \
     )
 
-// boolean enum
+/*
+ *	if not defined LBOOL the developer not using other boolean style
+ *	so we used the defualt 
+ * */
 #ifndef LBOOL
 
 typedef enum{
+	/* by default false take 0 value and that means false 		*/
 	false,
+	/* not zero that means true 					*/
 	true = !(false)
 }bool;
 #define LBOOL bool
@@ -70,8 +74,30 @@ typedef enum{
 #endif
 
 
+/*
+ *	if not defined LALLOC the developer not using other allocation memory style
+ *	so we used the defualt 
+ * */
 #ifndef LALLOC
+/*
+ *	check if stdlib is included
+ * */
+#if _STDLIB_H == 1
+#include <stdlib.h>
+#endif
+
 #define LALLOC	malloc
+
+#endif
+
+#ifndef LFREE
+
+#if _STDLIB_H == 1
+#include <stdlib.h>
+#endif
+
+#define LFREE	free
+
 #endif
 
 // Type enum contained bunch of types helps functions any variables type will work for
@@ -102,6 +128,7 @@ typedef enum{
 	LIST_EMPTY
 }ListError;
 
+// global status to handle raylist errors
 static ListError status = FINE;
 
 typedef char* string;
@@ -119,7 +146,6 @@ typedef string 	(*STRINGFUNCTION 	)(void);
  *		data  : the place we store the address of our variables 
  *		next  : pointing to next list
  * */
-
 struct list {
 	int 		index;
 	Type 		type ;
@@ -129,20 +155,6 @@ struct list {
 
 typedef struct list List;
 
-// unused
-#if 0
-
-// TODO: local for better solution in return data type
-typedef union {
-	int    retint;
-	char   retchar;
-	float  retfloat;
-	LBOOL   retbool;
-	string retstring;
-	void*  retnull;
-}RetType;
-
-#endif
 // global count for index
 static int global_count = 0;
 
@@ -151,8 +163,8 @@ static List* __list__ = NULL;
 
 // filter callback function 
 typedef enum{
-	ALL,  	// delete all types 
-	ONLY	// only type
+	ALL = 0xFF,  	// delete all types 
+	ONLY		// only type
 }Filter_Flag;
 
 typedef LBOOL (*FILTERCALLBACK)(void*);
@@ -170,6 +182,23 @@ typedef LBOOL (*FILTERCALLBACK)(void*);
  * */
 typedef struct {
 #ifndef USING_LIST
+	/*
+	 *	List_Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
+	 *
+	 *	List_Insert(
+	 *		int idx		: 		index where we insert the data
+	 *		Type type	: 		data type
+	 *		void* data the  :		data
+	 *	)
+	 *	Exemple :
+	 *		my_list.List_Insert(1 , BOOL , true);
+	 * */
+	void (*List_Insert)(
+			int idx,
+			Type type,
+			void* data
+	);
+
 	/*
 	 *	List_Append function will take the data and stored to the __list__ global variable 
 	 *
@@ -285,6 +314,22 @@ typedef struct {
 			void
 	);
 #else
+	/*
+	 *	Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
+	 *
+	 *	Insert(
+	 *		int idx		: 		index where we insert the data
+	 *		Type type	: 		data type
+	 *		void* data the  :		data
+	 *	)
+	 *	Exemple :
+	 *		my_list.Insert(1 , BOOL , true);
+	 * */
+	void (*Insert)(
+			int idx,
+			Type type,
+			void* data
+	);
 	/*
 	 *	Append function will take the data and stored to the __list__ global variable 
 	 *
@@ -407,40 +452,6 @@ Class_List list(
 		... 		// data : <TYPE> , <VALUE>
 );
 
-void	l_filter(FILTERCALLBACK callback , Type type);
-
-void l_clear(
-		void
-		);
-
-void* exec( 
-		int idx	// index 
-);
-
-void l_append(
-		Type type,
-		void* data
-);
-void l_delete(
-		int idx
-);
-string l_geterror(
-		void
-);
-void* l_get(
-		int idx
-);
-LBOOL l_search(
-		int*,
-		Type,
-		void*
-);
-void l_reverse(
-		void
-		);
-void l_print(
-		void
-		);
 #endif
 
 #ifdef LIST_C
@@ -533,90 +544,48 @@ static void add_float(
 static void init(List** l){
 	*l = NULL; 
 }
-Class_List list(int count , ...)
-{
-	init(&__list__);
-	va_list args;
-	va_start(args , count);
 
-	Class_List cl;
-	global_count = count;
-	size_t c = 0;
-	while(c < count){
-		Type t = va_arg(args , Type);
-		switch(t){
-			case CHR:{
-				void* temp = va_arg(args , char*);
-				add(&__list__,temp, CHR , c);
-			}break;
-			case INT:{
-				void* temp= va_arg(args , void*);
-				add(&__list__,temp, INT , c);
-			}break;
-			case STR:{
-				void* temp = va_arg(args , char*);
-				add(&__list__,temp , STR , c);
-			}break;
-			case BOOL:{
-				int t = va_arg(args , int);
-				void* temp = t ? "true" : "false";
-				add(&__list__,temp, BOOL , c);
-			}break;
-			case FLT:{
-				void* temp = va_arg(args , void*);
-				float* ttemp = (float*)temp;
-				add(&__list__,ttemp , FLT , c);
-			}break;
-			case VOIDPTR :{
-				void* temp = va_arg(args , void*);
-				add(&__list__,temp , VOIDPTR , c);
+// i don't care about the data position 
+// the complexity still O(N) the index helps you to know the data u want to get later
+static void local_l_insert(List** __list__ , int idx , Type type , void* data){
+	List* local_list = *(__list__);
+
+	if(idx < global_count && idx >= 0){
+		while(local_list != NULL){
+			if(local_list->index > idx){	
+				local_list->index++;
 			}
-			case  VOIDFUNC:{
-				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
-				add(&__list__,(void*)temp , VOIDFUNC , c);
-			}break; 
-			case  INTFUNC :{
-				INTEGERFUNCTION temp = va_arg(args ,INTEGERFUNCTION);
-				add(&__list__,(void*)temp , INTFUNC , c);
-			}break;
-			case  CHARFUNC:{
-				CHARACTERFUNCTION temp = va_arg(args ,CHARACTERFUNCTION);
-				add(&__list__,(void*)temp , CHARFUNC , c);
-			}break;
-			case  STRFUNC :{
-				STRINGFUNCTION temp = va_arg(args ,STRINGFUNCTION);
-				add(&__list__,(void*)temp , STRFUNC , c);
-			}break; 
+			if(idx == local_list->index){
+				List* node = LALLOC(sizeof(List));
+				if(node == NULL)
+				{
+					status = LIST_MEMALLOC;
+					return;
+				}
+				node->data = data;
+				node->type = type;
+				node->index = idx;
+
+				local_list->index++;
+				List* temp = local_list->next;
+				local_list->next = node;
+				node->next = temp;
+				if(local_list->next != NULL)
+					local_list = local_list->next;
+			}
+
+			local_list = local_list->next;
 		}
-		c++;
+		global_count++;
+	}else{
+		add(__list__ ,data , type , global_count++);
 	}
-	if(c == 0)	status = LIST_EMPTY;
-	va_end(args);
-#ifndef USING_LIST
-	cl.List_Append = l_append;
-	cl.List_Del_Index = l_delete;
-	cl.List_Get = l_get;
-	cl.List_Search = l_search;
-	cl.List_Reverse = l_reverse;
-	cl.List_Print = l_print;
-	cl.List_Exec_Func = exec;
-	cl.List_Clear = l_clear;
-	cl.List_Get_Error = l_geterror;
-	cl.List_Filter = l_filter;
-#else
-	cl.Append = l_append;
-	cl.Del_Index = l_delete;
-	cl.Get = l_get;
-	cl.Search = l_search;
-	cl.Reverse = l_reverse;
-	cl.Print = l_print;
-	cl.Exec_Func = exec;
-	cl.Clear = l_clear;
-	cl.Get_Error = l_geterror;
-	cl.Filter = l_filter;
-#endif
-	return cl;
 }
+
+void l_insert(int idx , Type type , void* data){
+	local_l_insert(&__list__ , idx , type , data);
+}
+
 
 #define LAppend(t , d) _Generic((d) , 		\
 			int : add_int,		\
@@ -637,7 +606,7 @@ void l_clear(){
 	List* temp;
 	while (current != NULL) {
 		temp = current->next; 
-		free(current);        
+		LFREE(current);        
 		current = temp;       
 	}
 	init(&__list__);
@@ -709,7 +678,7 @@ static void local_l_popidx(
 			List* tmp = ___temp;
 			if(___temp->next != NULL)
 				___temp = ___temp->next;
-			free(tmp);
+			LFREE(tmp);
 			global_count--;
 		}
 		else if ((___temp)->index > idx)	(___temp)->index--;
@@ -854,35 +823,29 @@ void l_print()
 	printf("[\n");
 	while(local_list != NULL){
 		switch((local_list)->type){
+			case VCHR:
 			case CHR:{
 				printf("\n\t[%d] '%c'",(local_list)->index  ,(*(char*)(local_list)->data) );
 			}break;
+			case VINT:
 			case INT:{
 				printf("\n\t[%d] %d",(local_list)->index  ,(*(int*)(local_list)->data) );
 			}break;
+			case VFLT :
 			case FLT:{
 				printf("\n\t[%d] %f",(local_list)->index  ,(*(float*)(local_list)->data) );
 			}break;
 
-			case VCHR:{
-				printf("\n\t[%d] '%c'",(local_list)->index  ,*(char*)((local_list)->data) );
-			}break;
-			case VINT:{
-				printf("\n\t[%d] %d",(local_list)->index  , *(int*)((local_list)->data));
-			}break;
 			case STR:{
 				printf("\n\t[%d] \"%s\"",(local_list)->index  , (local_list)->data);
 			}break;
 			case BOOL:{
 				printf("\n\t[%d] %s",(local_list)->index  , ((local_list)->data == "true") ? "true" : "false");
 			}break;
-			case VFLT :{
-				printf("\n\t[%d] %f",(local_list)->index  , *((float*)(local_list)->data));
+			case VOIDPTR :{
+				// printing address of the void ptr
+				printf("\n\t[%d] %p",(local_list)->index , (local_list)->data);
 			}break;
-			//case VOIDPTR :{
-			//	// printing address of the void ptr
-			//	printf("\n\t[%d] %p",(local_list)->index , (local_list)->data);
-			//}break;
 			case  INTFUNC:{
 				printf("\n\t<int function : %p><index : %d>" ,(local_list)->data,(local_list)->index);
 			}break; 
@@ -902,4 +865,92 @@ void l_print()
 	}
 	printf("\n]\n");
 }
+
+Class_List list(int count , ...)
+{
+	init(&__list__);
+	va_list args;
+	va_start(args , count);
+
+	Class_List cl;
+	global_count = count;
+	size_t c = 0;
+	while(c < count){
+		Type t = va_arg(args , Type);
+		switch(t){
+			case CHR:{
+				void* temp = va_arg(args , char*);
+				add(&__list__,temp, CHR , c);
+			}break;
+			case INT:{
+				void* temp= va_arg(args , void*);
+				add(&__list__,temp, INT , c);
+			}break;
+			case STR:{
+				void* temp = va_arg(args , char*);
+				add(&__list__,temp , STR , c);
+			}break;
+			case BOOL:{
+				int t = va_arg(args , int);
+				void* temp = t ? "true" : "false";
+				add(&__list__,temp, BOOL , c);
+			}break;
+			case FLT:{
+				void* temp = va_arg(args , void*);
+				float* ttemp = (float*)temp;
+				add(&__list__,ttemp , FLT , c);
+			}break;
+			case VOIDPTR :{
+				void* temp = va_arg(args , void*);
+				add(&__list__,temp , VOIDPTR , c);
+			}
+			case  VOIDFUNC:{
+				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
+				add(&__list__,(void*)temp , VOIDFUNC , c);
+			}break; 
+			case  INTFUNC :{
+				INTEGERFUNCTION temp = va_arg(args ,INTEGERFUNCTION);
+				add(&__list__,(void*)temp , INTFUNC , c);
+			}break;
+			case  CHARFUNC:{
+				CHARACTERFUNCTION temp = va_arg(args ,CHARACTERFUNCTION);
+				add(&__list__,(void*)temp , CHARFUNC , c);
+			}break;
+			case  STRFUNC :{
+				STRINGFUNCTION temp = va_arg(args ,STRINGFUNCTION);
+				add(&__list__,(void*)temp , STRFUNC , c);
+			}break; 
+		}
+		c++;
+	}
+	if(c == 0)	status = LIST_EMPTY;
+	va_end(args);
+#ifndef USING_LIST
+	cl.List_Insert = l_insert;
+	cl.List_Append = l_append;
+	cl.List_Del_Index = l_delete;
+	cl.List_Get = l_get;
+	cl.List_Search = l_search;
+	cl.List_Reverse = l_reverse;
+	cl.List_Print = l_print;
+	cl.List_Exec_Func = exec;
+	cl.List_Clear = l_clear;
+	cl.List_Get_Error = l_geterror;
+	cl.List_Filter = l_filter;
+#else
+	cl.Insert = l_insert;
+	cl.Append = l_append;
+	cl.Del_Index = l_delete;
+	cl.Get = l_get;
+	cl.Search = l_search;
+	cl.Reverse = l_reverse;
+	cl.Print = l_print;
+	cl.Exec_Func = exec;
+	cl.Clear = l_clear;
+	cl.Get_Error = l_geterror;
+	cl.Filter = l_filter;
 #endif
+	return cl;
+}
+
+#endif /* LIST_C */
