@@ -15,6 +15,50 @@ Class_List list(
 		... 		// data : <TYPE> , <VALUE>
 );
 ```
+## List_Insert(int idx , Type type , void* data)
+```c
+	/*
+	 *	List_Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
+	 *
+	 *	List_Insert(
+	 *		int idx		: 		index where we insert the data
+	 *		Type type	: 		data type
+	 *		void* data the  :		data
+	 *	)
+	 *	Exemple :
+	 *		my_list.List_Insert(1 , BOOL , true);
+	 * */
+	void (*List_Insert)(
+			int idx,
+			Type type,
+			void* data
+	);
+```
+
+## List_Filter(FILTERCALLBACK callback , Type type)
+```c
+	/*
+	 *	List_Filter function takes function callback that returns boolean and filter all elements from the list
+	 *
+	 *	Example : 
+	 *	int check_mod_of_num(void* tch){
+	 *		return (*(int*)tch % 2);
+	 *	}
+	 *	
+	 *					before : 	[
+	 *								3,2,7,5,1
+	 *							]
+	 *	my_list.List_Filter(check_mod_of_num , INT);
+	 *					after : 	[
+	 *								2
+	 *							]
+	 * */
+	void (*List_Filter)(
+			FILTERCALLBACK,
+			Type
+	);
+```
+
 ## List_Append(Type type, void* data): 
 ```c
 	/*
