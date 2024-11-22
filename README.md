@@ -34,10 +34,10 @@ void* ptr = &v;
 Class_List my_list = list(
             7,
             STR , "Hello",
-            CHR , "r",
+            VCHR , "r",
             BOOL ,true,
-            INT , (void*)&v,
-            FLT , (void*)&p,
+            VINT , (void*)&v,
+            VFLT , (void*)&p,
             VOIDPTR , ptr,
             STR , "World"
         );
@@ -56,3 +56,41 @@ my_list.List_Print();
  	7
  ]
 ```
+## Use Value Directly
+```c
+Class_List my_list = list(0); // init our list
+// can add value directly
+for(int i = 0 ; i < 10 ; i++){
+    LAppend(INT , i);
+}
+/// also
+
+Class_List my_list = list(3,
+            INT , 12,
+            CHR , 'r',
+            FLT ,12.23,
+);
+```
+## Filter Method
+
+```c
+LBOOL callback(void* handle){
+	if((*(int*)handle)%2 == 0)	return true;
+	else				return false;
+}
+int main(void){
+	int check = 5;
+	int check2 = 6;
+	int check3 = 8;
+	Class_List my_list = list(
+				4,
+				INT , (void*)&check,
+				STR , "foo",
+				INT , (void*)&check2,
+				INT , (void*)&check3
+			);
+	// test filter function
+    // the filter function will filter all the value using the callback function that you wrote
+	my_list.Filter(callback , INT);
+```
+
