@@ -45,7 +45,11 @@ int main(void){
 	my_list.Append(VINT , (void*)&check3);
 	// test filter function
 	//my_list.Filter(callback , VINT);
-	my_list.Del_Index(0);
+	printf("%d" , *(int*)my_list.Pop());
+	printf("%d" , *(int*)my_list.Peek());
+	printf("%d" , *(int*)my_list.Pop());
+	LAppend(INT , 10);
+	printf("%d" , *(int*)my_list.Peek());
 	my_list.Print();
 	//my_list.List_Reverse();
 	//my_list.Append(STR , "RayDen");

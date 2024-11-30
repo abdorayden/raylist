@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2023 Ray Den	raylist v1.1.1				*
+*			Copyright (c) 2024 Ray Den	raylist v1.3.1				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -91,8 +91,10 @@ typedef enum{
 #endif
 
 #ifndef LFREE
-
-#if _STDLIB_H == 1
+/*
+ *	check if stdlib is included
+ * */
+#if _STDLIB_H != 1
 #include <stdlib.h>
 #endif
 
@@ -183,6 +185,19 @@ typedef LBOOL (*FILTERCALLBACK)(void*);
 typedef struct {
 #ifndef USING_LIST
 	/*
+	 *	Peek function return last value of the List (Stack)
+	 *	Example : 
+	 *		void* value = my_list.List_Peek();
+	 * */
+	void* (*List_Peek)(void);
+	/*
+	 *	List_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.List_Pop();
+	 * */
+	void* (*List_Pop)(void);
+	/*
 	 *	List_Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
 	 *	List_Insert(
@@ -206,6 +221,8 @@ typedef struct {
 	 *		Type : the data type
 	 *		void*: data pointer point address of stored data
 	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
 	 *		my_list.List_Append(STR , "Hello World");
@@ -314,6 +331,19 @@ typedef struct {
 			void
 	);
 #else
+	/*
+	 *	Peek function return last value of the List (Stack)
+	 *	Example : 
+	 *		void* value = my_list.Peek();
+	 * */
+	void* (*Peek)(void);
+	/*
+	 *	Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Pop();
+	 * */
+	void* (*Pop)(void);
 	/*
 	 *	Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
@@ -545,8 +575,7 @@ static void init(List** l){
 	*l = NULL; 
 }
 
-// i don't care about the data position 
-// the complexity still O(N) the index helps you to know the data u want to get later
+// the complexity still O(N) in worst case the index helps you to know the data u want to get later
 static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 	List* local_list = *(__list__);
 
@@ -580,6 +609,24 @@ static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 	}else{
 		add(__list__ ,data , type , global_count++);
 	}
+}
+void* l_peek(void)
+{
+	return __list__->data;
+}
+
+static void* local_l_pop(List** __list__){
+	void* ret;
+	List* temp = *__list__;
+	ret = temp->data;
+	*__list__ = (*__list__)->next;
+	LFREE(temp);
+	global_count--;
+	return ret;
+}
+
+void* l_pop(){
+	return local_l_pop(&__list__);
 }
 
 void l_insert(int idx , Type type , void* data){
@@ -926,6 +973,8 @@ Class_List list(int count , ...)
 	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
+	cl.List_Peek = l_peek;
+	cl.List_Pop = l_pop;
 	cl.List_Insert = l_insert;
 	cl.List_Append = l_append;
 	cl.List_Del_Index = l_delete;
@@ -938,6 +987,8 @@ Class_List list(int count , ...)
 	cl.List_Get_Error = l_geterror;
 	cl.List_Filter = l_filter;
 #else
+	cl.Peek = l_peek;
+	cl.Pop = l_pop;
 	cl.Insert = l_insert;
 	cl.Append = l_append;
 	cl.Del_Index = l_delete;
