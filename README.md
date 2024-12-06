@@ -147,29 +147,7 @@ IfaceList list(
 		... 		// data : <TYPE> , <VALUE>
 );
 ```
-<<<<<<< HEAD
 
-=======
-## List_Pop(): 
-```c
-	/*
-	 *	List_Pop function will pop the last value from the list
-	 *
-	 *	Example : 
-	 *		void* value = my_list.List_Pop();
-	 * */
-	void* (*List_Pop)(void);
-```
-## List_Peek(): 
-```c
-	/*
-	 *	Peek function return last value of the List (Stack)
-	 *	Example : 
-	 *		void* value = my_list.List_Peek();
-	 * */
-	void* (*List_Peek)(void);
-```
->>>>>>> origin/master
 ## List_Insert(int idx , Type type , void* data)
 ```c
 	/*
