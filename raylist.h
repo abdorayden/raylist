@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2023 Ray Den	raylist v1.1.1				*
+*			Copyright (c) 2024 Ray Den	raylist v2.0.0				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -27,13 +27,10 @@
 // TODO : add sort	function
 // TODO : exec function syncronic
 
-// TODO : handle return value of the function in exec function
-
-#ifndef LIST_H
+#if !defined(LIST_H) || !defined(LIST_INCLUDED)
 #define LIST_H
-
+#define LIST_INCLUDED 
 // to check if raylist is included
-#define LIST_INCLUDED
 
 // 	typeof pragma returns string contained type of variable
 // 	Example :
@@ -73,6 +70,7 @@ typedef enum{
 
 #endif
 
+static LBOOL revesed = false;
 
 /*
  *	if not defined LALLOC the developer not using other allocation memory style
@@ -82,7 +80,7 @@ typedef enum{
 /*
  *	check if stdlib is included
  * */
-#if _STDLIB_H == 1
+#if defined(_STDLIB_H) && _STDLIB_H == 1
 #include <stdlib.h>
 #endif
 
@@ -91,13 +89,19 @@ typedef enum{
 #endif
 
 #ifndef LFREE
-
-#if _STDLIB_H == 1
+/*
+ *	check if stdlib is included
+ * */
+#if defined(_STDLIB_H) && _STDLIB_H == 1
 #include <stdlib.h>
 #endif
 
 #define LFREE	free
 
+#endif
+
+#ifndef LUNUSED
+#define LUNUSED(x) (void)x
 #endif
 
 // Type enum contained bunch of types helps functions any variables type will work for
@@ -133,11 +137,15 @@ static ListError status = FINE;
 
 typedef char* string;
 
-typedef void 	(*VOIDFUNCTION		)(void);
-typedef int  	(*INTEGERFUNCTION  	)(void);
-typedef LBOOL 	(*BOOLEANFUNCTION  	)(void);
-typedef char 	(*CHARACTERFUNCTION	)(void);
-typedef string 	(*STRINGFUNCTION 	)(void);
+/*
+ *	the call back function type in list
+ * */
+
+typedef void 	(*VOIDFUNCTION		)(void*);
+typedef int  	(*INTEGERFUNCTION  	)(void*);
+typedef LBOOL 	(*BOOLEANFUNCTION  	)(void*);
+typedef char 	(*CHARACTERFUNCTION	)(void*);
+typedef string 	(*STRINGFUNCTION 	)(void*);
 
 /*
  *	Linked List struct
@@ -170,18 +178,120 @@ typedef enum{
 typedef LBOOL (*FILTERCALLBACK)(void*);
 
 /*
- *	Class_List struct act like class all thouse functions point to other functions 
+ *	IfaceList struct act like class all thouse functions point to other functions 
  *
  *	Example :
  *		void foo(void){
  *			printf("bar");
  *		}
- *		Class_List test;
+ *		IfaceList test;
  *		test.List_Append = foo;
  *		
  * */
 typedef struct {
 #ifndef USING_LIST
+	/*
+	 *	return true if stack is empty else false
+	 * */
+	LBOOL (*Queue_Is_Empty)(
+			void
+	);
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Queue_Get_Error)(
+			void
+	);
+	/*
+	 *	Queue_Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Queue_Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
+	 *
+	 *	Example :
+	 *		my_list.Queue_Push(STR , "Hello World");
+	 *
+	 * */
+	void (*Queue_Push)(
+			Type type,
+			void* data
+	);
+	/*
+	 *	Peek function return last value of the Queue (Queue)
+	 *	Example : 
+	 *		void* value = my_list.Queue_Peek();
+	 * */
+	void* (*Queue_Peek)(void);
+	/*
+	 *	Queue_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Queue_Pop();
+	 * */
+	void* (*Queue_Pop)(void);
+	// clear Queue
+	void (*Queue_Clear)(
+			void
+	);
+
+	///////////
+	/*
+	 *	return true if list is empty else false
+	 * */
+	LBOOL (*List_Is_Empty)(
+			void
+	);
+	/*
+	 *	return true if stack is empty else false
+	 * */
+	LBOOL (*Stack_Is_Empty)(
+			void
+	);
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Stack_Get_Error)(
+			void
+	);
+	/*
+	 *	Stack_Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Stack_Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
+	 *
+	 *	Example :
+	 *		my_list.Stack_Push(STR , "Hello World");
+	 *
+	 * */
+	void (*Stack_Push)(
+			Type type,
+			void* data
+	);
+	/*
+	 *	Peek function return last value of the Stack (Stack)
+	 *	Example : 
+	 *		void* value = my_list.Stack_Peek();
+	 * */
+	void* (*Stack_Peek)(void);
+	/*
+	 *	Stack_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Stack_Pop();
+	 * */
+	void* (*Stack_Pop)(void);
+	// clear Stack
+	void (*Stack_Clear)(
+			void
+	);
 	/*
 	 *	List_Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
@@ -206,6 +316,8 @@ typedef struct {
 	 *		Type : the data type
 	 *		void*: data pointer point address of stored data
 	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
 	 *		my_list.List_Append(STR , "Hello World");
@@ -298,9 +410,20 @@ typedef struct {
 	void (*List_Print)(
 			void
 	);
+	/*
+	 * void bar{
+	 * 	printf("Hello World");
+	 * }
+	 * IfaceList my_list = list(0);
+	 * my_list.List_Append(VOIDFUNC , bar);
+	 * 	the list now contains a function 
+	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
+	 * my_list.List_Exec_Func(0 , NULL);
+	 * */
 
 	void* (*List_Exec_Func)(
-			int idx
+			int idx,
+			void* data
 	);
 
 	// clear list
@@ -314,6 +437,56 @@ typedef struct {
 			void
 	);
 #else
+	/*
+	 *	return true if list is empty else false
+	 * */
+	LBOOL (*Is_Empty)(
+			void
+	);
+	/*
+	 *	Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
+	 *
+	 *	Example :
+	 *		my_list.Push(STR , "Hello World");
+	 *
+	 * */
+	void (*Push)(
+			Type type,
+			void* data
+	);
+	/*
+	 *	QPeek function return first value of the List (Queue)
+	 *	Example : 
+	 *		void* value = my_list.QPeek();
+	 * */
+	void* (*QPeek)(void);
+	/*
+	 *	QPop function will pop the first value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.QPop();
+	 * */
+	void* (*QPop)(void);
+	/*
+	 *	SPeek function return last value of the List (Stack)
+	 *	Example : 
+	 *		void* value = my_list.SPeek();
+	 * */
+	void* (*SPeek)(void);
+	/*
+	 *	SPop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.SPop();
+	 * */
+	void* (*SPop)(void);
 	/*
 	 *	Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
@@ -429,11 +602,21 @@ typedef struct {
 	void (*Print)(
 			void
 	);
+	/*
+	 * void bar{
+	 * 	printf("Hello World");
+	 * }
+	 * IfaceList my_list = list(0);
+	 * my_list.Append(VOIDFUNC , bar);
+	 * 	the list now contains a function 
+	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
+	 * my_list.Exec_Func(0 , NULL);
+	 * */
 
 	void* (*Exec_Func)(
-			int idx
+			int idx,
+			void* data
 	);
-
 	// clear list
 	void (*Clear)(
 			void
@@ -445,12 +628,16 @@ typedef struct {
 			void
 	);
 #endif
-}Class_List;
+}IfaceList;
 
-Class_List list(
+IfaceList list(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
+
+IfaceList stack(void);
+
+IfaceList queue(void);
 
 #endif
 
@@ -545,8 +732,12 @@ static void init(List** l){
 	*l = NULL; 
 }
 
-// i don't care about the data position 
-// the complexity still O(N) the index helps you to know the data u want to get later
+static LBOOL l_is_empty(void)
+{
+	return (global_count == 0);
+}
+
+// the complexity still O(N) in worst case the index helps you to know the data u want to get later
 static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 	List* local_list = *(__list__);
 
@@ -581,6 +772,55 @@ static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 		add(__list__ ,data , type , global_count++);
 	}
 }
+static void* l_peek(void)
+{
+	return __list__->data;
+}
+
+static void* l_qpeek(void)
+{
+	List* temp = __list__;
+	while(temp->next != NULL)	temp = temp->next;
+	return temp->data;
+}
+
+static void* local_l_qpop(List** __list__){
+	void* d;
+	if(*__list__ == NULL)	return NULL;
+	List* ___temp = *__list__;
+	if((___temp)->next == NULL){
+		d = ___temp->data;
+		LFREE(___temp);
+		___temp = NULL;
+		global_count--;
+		return d;
+	}
+	while((___temp)->next->next != NULL)	___temp = (___temp)->next;
+	d = ___temp->next->data;
+	LFREE(___temp->next);
+	___temp->next = NULL;
+	global_count--;
+	return d;
+}
+
+static void* l_qpop(){
+	return local_l_qpop(&__list__);
+}
+
+static void* local_l_pop(List** __list__){
+	void* ret;
+	List* temp = *__list__;
+	if(temp == NULL)	return NULL;
+	ret = temp->data;
+	*__list__ = (*__list__)->next;
+	LFREE(temp);
+	global_count--;
+	return ret;
+}
+
+void* l_pop(){
+	return local_l_pop(&__list__);
+}
 
 void l_insert(int idx , Type type , void* data){
 	local_l_insert(&__list__ , idx , type , data);
@@ -588,6 +828,12 @@ void l_insert(int idx , Type type , void* data){
 
 
 #define LAppend(t , d) _Generic((d) , 		\
+			int : add_int,		\
+			char : add_char,	\
+			float : add_float	\
+		)(&__list__ , d , t  , global_count++);
+
+#define LPush(t , d) _Generic((d) , 		\
 			int : add_int,		\
 			char : add_char,	\
 			float : add_float	\
@@ -601,6 +847,16 @@ void l_append(
 	if(status != FINE) status = FINE;
 	add(&__list__ , data, type , global_count++);
 }
+
+static void l_push(
+		Type type,
+		void* data
+)
+{
+	if(status != FINE) status = FINE;
+	add(&__list__ , data, type , global_count++);
+}
+
 void l_clear(){
 	List* current = __list__;
 	List* temp;
@@ -609,9 +865,10 @@ void l_clear(){
 		LFREE(current);        
 		current = temp;       
 	}
+	global_count = 0;
 	init(&__list__);
 }
-static void* local_exec(List* __list__ ,int idx)
+static void* local_exec(List* __list__ ,int idx , void* data)
 {
 	if(idx > global_count){	
 		status = LIST_INDEX_OUT_OF_RANGE;
@@ -627,8 +884,13 @@ static void* local_exec(List* __list__ ,int idx)
 		while(__list__ != NULL){
 			switch((__list__)->type){
 				case  VOIDFUNC:{
-					void (*call)() = (void(*)())(__list__)->data;
-					call();
+					if(data == NULL){
+						void (*call)() = (void(*)())(__list__)->data;
+						call();
+					}else{
+						void (*call)(void*) = (void(*)(void*))(__list__)->data;
+						call(data);
+					}
 				}break; 
 			}
 			__list__ = (__list__)->next;
@@ -638,12 +900,22 @@ static void* local_exec(List* __list__ ,int idx)
 			if((__list__)->index == idx){
 				switch((__list__)->type){
 					case STRFUNC : {
-						string (*call)() = ((string(*)())(__list__)->data);
-						return (char*)call();
+						if(data == NULL){
+							string (*call)() = ((string(*)())(__list__)->data);
+							return (char*)call();
+						}else{
+							string (*call)(void*) = ((string(*)(void*))(__list__)->data);
+							return (char*)call(data);
+						}
 					}break;
 					case  VOIDFUNC:{
-						void (*call)() = (void(*)())(__list__)->data;
-						call();
+						if(data == NULL){
+							void (*call)() = (void(*)())(__list__)->data;
+							call();
+						}else{
+							void (*call)(void*) = (void(*)(void*))(__list__)->data;
+							call(data);
+						}
 						return NULL;
 					}break; 
 				}
@@ -654,16 +926,16 @@ static void* local_exec(List* __list__ ,int idx)
 	return NULL;
 }
 
-void* exec(int idx){
-	return local_exec(__list__ , idx);
+void* exec(int idx , void* data){
+	return local_exec(__list__ , idx , data);
 }
+
 static void local_l_popidx(
 		List** __list__,
 		int idx
 		)
 {
-	List* ___temp = *__list__;
-	if(___temp == NULL){
+	if(*__list__ == NULL){
 		status = LIST_EMPTY;
 		return;
 	}
@@ -673,17 +945,36 @@ static void local_l_popidx(
 		return;
 	}
 	status = FINE;
-	while(___temp != NULL){
-		if((___temp)->index == idx){
-			List* tmp = ___temp;
-			if(___temp->next != NULL)
-				___temp = ___temp->next;
-			LFREE(tmp);
-			global_count--;
-		}
-		else if ((___temp)->index > idx)	(___temp)->index--;
+	List* ___temp = *__list__;
+	List* prev = NULL;
+	if (___temp != NULL && ___temp->index == idx) {
+	    *__list__ = ___temp->next;
+	    LFREE(___temp);
+	    ___temp = *__list__;
+	    while(___temp != NULL && revesed){
+	        ___temp->index--;
+	        ___temp =  ___temp->next;
+	    }
+	    global_count--;
+	    return;
+	}
+	while (___temp != NULL && ___temp->index != idx) {
+		if(!revesed && ___temp->index > 0)
+			___temp->index--;
+		prev = ___temp;
 		___temp = ___temp->next;
 	}
+	if (___temp == NULL) {
+	    return;
+	}
+	prev->next = ___temp->next;
+	LFREE(___temp);
+	___temp = prev->next;
+	while(revesed && ___temp != NULL && ___temp->index > 0){
+		___temp->index--;
+		___temp =  ___temp->next;
+	}
+	global_count--;
 }
 void l_delete(int idx)
 {
@@ -754,26 +1045,30 @@ static LBOOL local_l_search(
 		switch(type){
 			case STR :{
 				if(data == ___temp->data){
-					*idx = ___temp->index ;
+					if(idx != NULL)
+						*idx = ___temp->index ;
 					return true;
 				}
 			}break;
 			case CHR :
 			case INT:{
 				if(*((int*)data) == (*(int*)___temp->data)){
-					*idx = ___temp->index ;
+					if(idx != NULL)
+						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
 			case FLT: {
 				if(*(float*)data == *(float*)___temp->data){
-					*idx = ___temp->index ;
+					if(idx != NULL)
+						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
 			case BOOL:{
 				if(*(LBOOL*)data){
-					*idx = ___temp->index ;
+					if(idx != NULL)
+						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
@@ -806,6 +1101,7 @@ static void local_l_reverse(List** __list__)
 	    current = next; 
 	} 
 	*__list__ = prev; 
+	revesed = !revesed;
 }
 void l_reverse(){
 	local_l_reverse(&__list__);
@@ -823,15 +1119,12 @@ void l_print()
 	printf("[\n");
 	while(local_list != NULL){
 		switch((local_list)->type){
-			case VCHR:
 			case CHR:{
 				printf("\n\t[%d] '%c'",(local_list)->index  ,(*(char*)(local_list)->data) );
 			}break;
-			case VINT:
 			case INT:{
 				printf("\n\t[%d] %d",(local_list)->index  ,(*(int*)(local_list)->data) );
 			}break;
-			case VFLT :
 			case FLT:{
 				printf("\n\t[%d] %f",(local_list)->index  ,(*(float*)(local_list)->data) );
 			}break;
@@ -866,13 +1159,13 @@ void l_print()
 	printf("\n]\n");
 }
 
-Class_List list(int count , ...)
+IfaceList list(int count , ...)
 {
 	init(&__list__);
 	va_list args;
 	va_start(args , count);
 
-	Class_List cl;
+	IfaceList cl;
 	global_count = count;
 	size_t c = 0;
 	while(c < count){
@@ -926,6 +1219,15 @@ Class_List list(int count , ...)
 	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
+	cl.Queue_Push = NULL;
+	cl.Stack_Is_Empty = NULL;
+	cl.Stack_Get_Error = NULL;
+	cl.Stack_Push = NULL;
+	cl.Stack_Peek = NULL;
+	cl.Stack_Pop = NULL;
+	cl.Queue_Peek = NULL;
+	cl.Queue_Pop = NULL;
+	cl.List_Is_Empty = l_is_empty;
 	cl.List_Insert = l_insert;
 	cl.List_Append = l_append;
 	cl.List_Del_Index = l_delete;
@@ -938,17 +1240,125 @@ Class_List list(int count , ...)
 	cl.List_Get_Error = l_geterror;
 	cl.List_Filter = l_filter;
 #else
+	cl.Push = NULL;
+	cl.SPeek = NULL;
+	cl.SPop = NULL;
+	cl.QPeek = NULL;
+	cl.QPop = NULL;
 	cl.Insert = l_insert;
 	cl.Append = l_append;
 	cl.Del_Index = l_delete;
 	cl.Get = l_get;
 	cl.Search = l_search;
 	cl.Reverse = l_reverse;
+	cl.Is_Empty = l_is_empty;
 	cl.Print = l_print;
 	cl.Exec_Func = exec;
 	cl.Clear = l_clear;
 	cl.Get_Error = l_geterror;
 	cl.Filter = l_filter;
+#endif
+	return cl;
+}
+
+IfaceList stack()
+{
+	init(&__list__);
+
+	IfaceList cl;
+	global_count = 0;
+
+#ifndef USING_LIST
+	cl.Queue_Push = NULL;
+	cl.Stack_Is_Empty = l_is_empty;
+	cl.Stack_Get_Error = l_geterror;
+	cl.Stack_Push = l_push;
+	cl.Stack_Peek = l_peek;
+	cl.Stack_Pop = l_pop;
+	cl.Stack_Clear = l_clear;
+	cl.Queue_Peek = NULL;
+	cl.Queue_Pop = NULL;
+	cl.List_Insert = NULL;
+	cl.List_Append = NULL;
+	cl.List_Del_Index = NULL;
+	cl.List_Get = NULL;
+	cl.List_Search = NULL;
+	cl.List_Reverse = NULL;
+	cl.List_Print = NULL;
+	cl.List_Exec_Func = NULL;
+	cl.List_Clear = NULL;
+	cl.List_Get_Error = NULL;
+	cl.List_Filter = NULL;
+#else
+	cl.Is_Empty = l_is_empty;
+	cl.Push = l_push;
+	cl.SPeek = l_peek;
+	cl.SPop = l_pop;
+	cl.Clear = l_clear;
+	cl.QPeek = NULL;
+	cl.QPop = NULL;
+	cl.Get_Error = l_geterror;
+	cl.Insert = NULL;
+	cl.Append = NULL;
+	cl.Del_Index = NULL;
+	cl.Get = NULL;
+	cl.Search = NULL;
+	cl.Reverse = NULL;
+	cl.Print = NULL;
+	cl.Exec_Func = NULL;
+	cl.Filter = NULL;
+#endif
+	return cl;
+}
+
+IfaceList queue(void)
+{
+	init(&__list__);
+
+	IfaceList cl;
+	global_count = 0;
+
+#ifndef USING_LIST
+	cl.Queue_Pop = l_qpop;
+	cl.Queue_Peek = l_qpeek;
+	cl.Queue_Push = l_push;
+	cl.Queue_Get_Error = l_geterror;
+	cl.Queue_Is_Empty = l_is_empty;
+	cl.Queue_Clear = l_clear;
+	cl.Stack_Is_Empty = NULL;
+	cl.Stack_Get_Error = NULL;
+	cl.Stack_Push = NULL;
+	cl.Stack_Peek = NULL;
+	cl.Stack_Pop = NULL;
+	cl.List_Insert = NULL;
+	cl.List_Append = NULL;
+	cl.List_Del_Index = NULL;
+	cl.List_Get = NULL;
+	cl.List_Search = NULL;
+	cl.List_Reverse = NULL;
+	cl.List_Print = NULL;
+	cl.List_Exec_Func = NULL;
+	cl.List_Clear = NULL;
+	cl.List_Get_Error = NULL;
+	cl.List_Filter = NULL;
+#else
+	cl.QPop = l_qpop;
+	cl.QPeek = l_qpeek;
+	cl.Is_Empty = l_is_empty;
+	cl.Push = l_push;
+	cl.Clear = l_clear;
+	cl.SPeek = NULL;
+	cl.SPop = NULL;
+	cl.Get_Error = l_geterror;
+	cl.Insert = NULL;
+	cl.Append = NULL;
+	cl.Del_Index = NULL;
+	cl.Get = NULL;
+	cl.Search = NULL;
+	cl.Reverse = NULL;
+	cl.Print = NULL;
+	cl.Exec_Func = NULL;
+	cl.Filter = NULL;
 #endif
 	return cl;
 }

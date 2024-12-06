@@ -4,17 +4,150 @@
   <img src="./assets/logo.jpeg" width="350" height="350"/>
 </p>
 
-## This is a C code that implements a linked list data structure with a variety of functions to manipulate and interact with the list. Here's a breakdown of the code:
+## This is a C code that implements a linked list data structure with a variety of functions to manipulate and interact with the list and stack and queue all these data structures implements IfaceList interface. Here's a breakdown of the code:
 
-### methods available
+### methods available in stack
+## Stack_Is_Empty();
+```c
+	/*
+	 *	return true if stack is empty else false
+	 * */
+	LBOOL (*Stack_Is_Empty)(
+			void
+	);
+```
+## Stack_Get_Error();
+```c
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Stack_Get_Error)(
+			void
+	);
+```
+## Stack_Push(Type type , void* data);
+```c
+	/*
+	 *	Stack_Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Stack_Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
+	 *
+	 *	Example :
+	 *		my_list.Stack_Push(STR , "Hello World");
+	 *
+	 * */
+	void (*Stack_Push)(
+			Type type,
+			void* data
+	);
+```
+## Stack_Peek();
+```c
+	/*
+	 *	Peek function return last value of the Stack (Stack)
+	 *	Example : 
+	 *		void* value = my_list.Stack_Peek();
+	 * */
+	void* (*Stack_Peek)(void);
+```
+## Stack_Pop();
+```c
+	/*
+	 *	Stack_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Stack_Pop();
+	 * */
+	void* (*Stack_Pop)(void);
+```
+## Stack_Clear();
+```c
+	// clear Stack
+	void (*Stack_Clear)(
+			void
+	);
+```
+### methods available in queue
+## Queue_Is_Empty();
+```c
+	/*
+	 *	return true if queue is empty else false
+	 * */
+	LBOOL (*Queue_Is_Empty)(
+			void
+	);
+```
+## Queue_Get_Error();
+```c
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Queue_Get_Error)(
+			void
+	);
+```
+## Queue_Push(Type type , void* data);
+```c
+	/*
+	 *	Queue_Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Queue_Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in queue algorithm
+	 *
+	 *	Example :
+	 *		my_list.Queue_Push(STR , "Hello World");
+	 *
+	 * */
+	void (*Queue_Push)(
+			Type type,
+			void* data
+	);
+```
+## Queue_Peek();
+```c
+	/*
+	 *	Peek function return last value of the Queue (Queue)
+	 *	Example : 
+	 *		void* value = my_list.Queue_Peek();
+	 * */
+	void* (*Queue_Peek)(void);
+```
+## Queue_Pop();
+```c
+	/*
+	 *	Queue_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Queue_Pop();
+	 * */
+	void* (*Queue_Pop)(void);
+```
+## Queue_Clear();
+```c
+	// clear Queue
+	void (*Queue_Clear)(
+			void
+	);
+```
+### methods available in list
 
 ## list(int count, ...): 
 ```c
-Class_List list(
+IfaceList list(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
 ```
+
 ## List_Insert(int idx , Type type , void* data)
 ```c
 	/*
@@ -113,6 +246,24 @@ Class_List list(
 			int idx
 	);
 ```
+## List_Exec_Func(int idx , void* data);
+```c
+	/*
+	 * void bar{
+	 * 	printf("Hello World");
+	 * }
+	 * IfaceList my_list = list(0);
+	 * my_list.List_Append(VOIDFUNC , bar);
+	 * 	the list now contains a function 
+	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
+	 * my_list.List_Exec_Func(0 , NULL);
+	 * */
+
+	void* (*List_Exec_Func)(
+			int idx,
+			void* data
+	);
+```
 ## List_Search(int* idx,Type type, void* data): 
 ```c
 	/*
@@ -164,7 +315,7 @@ Overall, this code provides a basic implementation of a linked list data structu
 int v = 7;
 float p = 3.14;
 void* ptr = &v;
-Class_List my_list = list(
+IfaceList my_list = list(
             7,
             STR , "Hello",
             VCHR , "r",
@@ -191,14 +342,14 @@ my_list.List_Print();
 ```
 ## Use Value Directly
 ```c
-Class_List my_list = list(0); // init our list
+IfaceList my_list = list(0); // init our list
 // can add value directly
 for(int i = 0 ; i < 10 ; i++){
     LAppend(INT , i);
 }
 /// also
 
-Class_List my_list = list(3,
+IfaceList my_list = list(3,
             INT , 12,
             CHR , 'r',
             FLT ,12.23,
@@ -215,7 +366,7 @@ int main(void){
 	int check = 5;
 	int check2 = 6;
 	int check3 = 8;
-	Class_List my_list = list(
+	IfaceList my_list = list(
 				4,
 				INT , (void*)&check,
 				STR , "foo",
