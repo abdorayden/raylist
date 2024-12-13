@@ -39,17 +39,17 @@ int main(void){
 	int check = 5;
 	int check2 = 6;
 	int check3 = 8;
-	Class_List my_list = list(0);
-	my_list.Append(VINT , (void*)&check );
-	my_list.Append(VINT , (void*)&check2);
-	my_list.Append(VINT , (void*)&check3);
+	IfaceList my_list = list(0);
+	my_list.Append(INT , (void*)&check );
+	my_list.Append(INT , (void*)&check2);
+	my_list.Append(INT , (void*)&check3);
 	// test filter function
-	//my_list.Filter(callback , VINT);
-	printf("%d" , *(int*)my_list.Pop());
-	printf("%d" , *(int*)my_list.Peek());
-	printf("%d" , *(int*)my_list.Pop());
-	LAppend(INT , 10);
-	printf("%d" , *(int*)my_list.Peek());
+	//my_list.Filter(callback , INT , ALL);
+	//printf("%d" , *(int*)my_list.Pop());
+	//printf("%d" , *(int*)my_list.Peek());
+	//printf("%d" , *(int*)my_list.Pop());
+	//LAppend(INT , 10);
+	//printf("%d" , *(int*)my_list.Peek());
 	my_list.Print();
 	//my_list.List_Reverse();
 	//my_list.Append(STR , "RayDen");

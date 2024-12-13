@@ -21,11 +21,8 @@
 *												*
  ************************************************************************************************/
 
-// TODO : add map	function
 // TODO : add thread	function 
 // TODO : add thread	type
-// TODO : add sort	function
-// TODO : exec function syncronic
 
 #if !defined(LIST_H) || !defined(LIST_INCLUDED)
 #define LIST_H
@@ -55,6 +52,11 @@
     )
 
 /*
+ *	local type
+ * */
+#define RLLOCAL	static
+
+/*
  *	if not defined LBOOL the developer not using other boolean style
  *	so we used the defualt 
  * */
@@ -70,13 +72,13 @@ typedef enum{
 
 #endif
 
-static LBOOL revesed = false;
+RLLOCAL LBOOL revesed = false;
 
 /*
- *	if not defined LALLOC the developer not using other allocation memory style
+ *	if not defined RLALLOC the developer not using other allocation memory style
  *	so we used the defualt 
  * */
-#ifndef LALLOC
+#ifndef RLALLOC
 /*
  *	check if stdlib is included
  * */
@@ -84,11 +86,11 @@ static LBOOL revesed = false;
 #include <stdlib.h>
 #endif
 
-#define LALLOC	malloc
+#define RLALLOC	malloc
 
 #endif
 
-#ifndef LFREE
+#ifndef RLFREE
 /*
  *	check if stdlib is included
  * */
@@ -96,27 +98,52 @@ static LBOOL revesed = false;
 #include <stdlib.h>
 #endif
 
-#define LFREE	free
+#define RLFREE	free
 
 #endif
 
-#ifndef LUNUSED
-#define LUNUSED(x) (void)x
+#ifndef RLUNUSED
+#define RLUNUSED(x) (void)x
 #endif
+
+/*
+ *	API
+ *	this api is used to create thread for multiple operating systems
+ *	this api used for running Asynchronous functions
+ * */
+#ifdef _WIN32
+
+#include <windows.h>
+#define RLAPIThread HANDLE
+#define RLAPICallBackFunction	LPTHREAD_START_ROUTINE
+#define RLAPIParam		LPVOID
+
+#define RLTestCancel()
+
+#else
+
+#ifndef _PTHREAD_H
+#include <pthread.h>
+#endif
+
+#define RLAPIThread pthread_t
+#define RLAPICallBackFunction	void*
+#define RLAPIParam		void*
+
+#define RLTestCancel		pthread_testcancel
+
+#endif
+
+
 
 // Type enum contained bunch of types helps functions any variables type will work for
-// STR for strings BOOL for boolean ... 
+// STR for strings BOOLL for boolean ... 
 typedef enum{
 	CHR = 0, 	// char type
 	STR    , 	// string type
-	BOOL   ,	// bool type
-	INT    , 	// int type
+	BOOLL   ,	// bool type
+	INTT    , 	// int type
 	FLT    , 	// float type
-	
-	VCHR    , 	// variable char type
-	VINT    , 	// variable int type
-	VFLT    , 	// variable float type
-
 	VOIDPTR,	// void pointer type
 
 	VOIDFUNC,
@@ -129,11 +156,15 @@ typedef enum{
 	FINE = 0,
 	LIST_INDEX_OUT_OF_RANGE,
 	LIST_MEMALLOC,
+	NULL_VALUE,
+	ERROR_WAIT_THREAD,
+	ERROR_KILL_THREAD,
+	ERROR_CREATE_THREAD,
 	LIST_EMPTY
 }ListError;
 
 // global status to handle raylist errors
-static ListError status = FINE;
+RLLOCAL ListError status = FINE;
 
 typedef char* string;
 
@@ -164,10 +195,10 @@ struct list {
 typedef struct list List;
 
 // global count for index
-static int global_count = 0;
+RLLOCAL int global_count = 0;
 
 // Global list variable 
-static List* __list__ = NULL;
+RLLOCAL List* __list__ = NULL;
 
 // filter callback function 
 typedef enum{
@@ -176,6 +207,42 @@ typedef enum{
 }Filter_Flag;
 
 typedef LBOOL (*FILTERCALLBACK)(void*);
+
+// map call back function
+typedef void* (*MAPCALLBACK)(void*);
+
+// Exec function Flag
+typedef enum {
+	/* return value from Exec function
+	 * OUTT flag is not enabled if index parameter in Exec_Func was out of range
+	 * */ 
+	OUTT, 
+	/* the return value will replace function callback index ,
+	* the function Exec will run all function 
+	* the void function is not replaced 
+	* */
+	INPLACE,  
+	/* the function return value will added to the list */
+	ADDED
+}Exec_Flag;
+
+/*
+ *	interface for manipulate thread handle 
+ * */
+typedef struct {
+	// the thread in it self
+	RLAPIThread thread;
+	/*
+	 *	Wait function 
+	 *	function waits for the thread specified by thread to terminate
+	 * */
+	void (*Wait)(RLAPIThread thread);
+	/*
+	 *	Kill function
+	 *	for killing the thread
+	 * */
+	void (*Kill)(RLAPIThread thread);
+}IfaceThread;
 
 /*
  *	IfaceList struct act like class all thouse functions point to other functions 
@@ -301,7 +368,7 @@ typedef struct {
 	 *		void* data the  :		data
 	 *	)
 	 *	Exemple :
-	 *		my_list.List_Insert(1 , BOOL , true);
+	 *		my_list.List_Insert(1 , BOOLL , true);
 	 * */
 	void (*List_Insert)(
 			int idx,
@@ -338,14 +405,15 @@ typedef struct {
 	 *					before : 	[
 	 *								3,2,7,5,1
 	 *							]
-	 *	my_list.List_Filter(check_mod_of_num , INT);
+	 *	my_list.List_Filter(check_mod_of_num , INTT);
 	 *					after : 	[
 	 *								2
 	 *							]
 	 * */
 	void (*List_Filter)(
 			FILTERCALLBACK,
-			Type
+			Type , 
+			Filter_Flag flag
 	);
 	/*
 	 * 	List_Search function return true if the data has been found and will store index of the data in int* parameter else will return false
@@ -423,7 +491,8 @@ typedef struct {
 
 	void* (*List_Exec_Func)(
 			int idx,
-			void* data
+			void* data,
+			Exec_Flag flag
 	);
 
 	// clear list
@@ -435,6 +504,41 @@ typedef struct {
 	 * */ 
 	string (*List_Get_Error)(
 			void
+	);
+	/*
+	 *	map is a higher-order function that applies a given function to each element of a collection
+	 *	Example : 
+	 *
+	 *		void* callback(void* d)
+	 *		{
+	 *			if(*(int*)d == 2)
+	 *			{
+	 *				*(int*)d = 10;
+	 *			}
+	 *			return d;
+	 *		}
+	 *		IfaceList my_list = list(0);
+	 *		for(int i = 0 ; i < 4 ; i++){
+	 *			RLAppend(i , INTT);
+	 *		}
+	 *		list : [0,1,2,3]
+	 *		my_list.List_Map(callback , INTT);
+	 *		list : [0,1,10,3]
+	 * */ 
+	void (*List_Map)(
+			MAPCALLBACK	func,
+			Type		type
+	);
+	/*
+	 *	exec asynchronous functiona
+	 *	IfaceList my_list = list(0);
+	 *	my_list.Append(STRFUNC , func);
+	 *	my_list.List_Exec_Async(0, NULL).Wait();
+	 *
+	 * */
+	IfaceThread (*List_Exec_Async)(
+			int idx,
+			RLAPIParam data
 	);
 #else
 	/*
@@ -496,7 +600,7 @@ typedef struct {
 	 *		void* data the  :		data
 	 *	)
 	 *	Exemple :
-	 *		my_list.Insert(1 , BOOL , true);
+	 *		my_list.Insert(1 , BOOLL , true);
 	 * */
 	void (*Insert)(
 			int idx,
@@ -530,14 +634,15 @@ typedef struct {
 	 *					before : 	[
 	 *								3,2,7,5,1
 	 *							]
-	 *	my_list.List_Filter(check_mod_of_num , INT);
+	 *	my_list.List_Filter(check_mod_of_num , INTT);
 	 *					after : 	[
 	 *								2
 	 *							]
 	 * */
 	void (*Filter)(
 			FILTERCALLBACK,
-			Type
+			Type , 
+			Filter_Flag flag
 	);
 	/*
 	 * 	Search function return true if the data has been found and will store index of the data in int* parameter else will return false
@@ -615,7 +720,8 @@ typedef struct {
 
 	void* (*Exec_Func)(
 			int idx,
-			void* data
+			void* data,
+			Exec_Flag flag
 	);
 	// clear list
 	void (*Clear)(
@@ -627,8 +733,44 @@ typedef struct {
 	string (*Get_Error)(
 			void
 	);
+	/*
+	 *	map is a higher-order function that applies a given function to each element of a collection
+	 *	Example : 
+	 *
+	 *		void* callback(void* d)
+	 *		{
+	 *			if(*(int*)d == 2)
+	 *			{
+	 *				*(int*)d = 10;
+	 *			}
+	 *			return d;
+	 *		}
+	 *		IfaceList my_list = list(0);
+	 *		for(int i = 0 ; i < 4 ; i++){
+	 *			RLAppend(i , INTT);
+	 *		}
+	 *		list : [0,1,2,3]
+	 *		my_list.Map(callback , INTT);
+	 *		list : [0,1,10,3]
+	 * */ 
+	void (*Map)(
+			MAPCALLBACK	func,
+			Type		type
+	);
+	/*
+	 *	exec asynchronous functiona
+	 *	IfaceList my_list = list(0);
+	 *	my_list.Append(STRFUNC , func);
+	 *	my_list.List_Exec_Async(0, NULL).Wait();
+	 *
+	 * */
+	IfaceThread (*Exec_Async)(
+			int idx,
+			RLAPIParam data
+	);
 #endif
 }IfaceList;
+
 
 IfaceList list(
 		int count , 	// number of data you
@@ -643,13 +785,75 @@ IfaceList queue(void);
 
 #ifdef LIST_C
 
-static void add_voidptr(
+/*
+ *	api function 
+ * */
+RLLOCAL RLAPIThread RLCreateThread(RLAPICallBackFunction func , RLAPIParam parameter)
+{
+#ifndef _WIN32
+	RLAPIThread thread;
+	if(pthread_create(&thread, NULL, func, parameter) == 0)
+	{
+		status = ERROR_CREATE_THREAD;
+		return thread;
+	}
+#else
+	RLAPIThread thread = CreateThread(NULL , 0 , func , parameter , 0 , NULL);
+	if(thread == NULL){
+		status = ERROR_CREATE_THREAD;
+		return NULL ;
+	}
+#endif
+	return thread;
+}
+
+RLLOCAL void RLWait(RLAPIThread thread)
+{
+#ifdef _WIN32
+	if(WaitForSingleObject(thread , INFINITE) == WAIT_FAILED)
+	{
+		status = ERROR_WAIT_THREAD;
+		return;
+	}
+#else
+	if(pthread_join(thread , NULL) != 0)
+	{
+		status = ERROR_WAIT_THREAD;
+		return;
+	}
+#endif
+}
+
+/*
+ * NOTE : in Callback function don't forget to call RLTestCancel() function 
+ * to enable kill thread
+ * */
+
+RLLOCAL void RLKill(RLAPIThread thread)
+{
+#ifdef _WIN32
+	if(!TerminateThread(thread , 0))
+	{
+		status = ERROR_KILL_THREAD;
+		return;
+	}
+	CloseHandle(thread);
+#else
+	if(pthread_cancel(thread) != 0)
+	{
+		status = ERROR_WAIT_THREAD;
+		return;
+	}
+#endif
+}
+
+RLLOCAL void add_voidptr(
 		List** __list__ , 
 		void* val , 
 		Type t, 
 		int idx
 ){
-	List* temp = LALLOC(sizeof(List));
+	List* temp = RLALLOC(sizeof(List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -661,19 +865,19 @@ static void add_voidptr(
 	temp->next = *__list__;                
 	*__list__ = temp;                      
 }
-static void add_int(
+RLLOCAL void add_int(
 		List** __list__ , 
 		int val , 
 		Type t, 
 		int idx
 ){
-	List* temp = LALLOC(sizeof(List));
+	List* temp = RLALLOC(sizeof(List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = LALLOC(sizeof(int));
+	temp->data = RLALLOC(sizeof(int));
 	*(int*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -681,19 +885,19 @@ static void add_int(
 	*__list__ = temp;                      
 }
 
-static void add_char(
+RLLOCAL void add_char(
 		List** __list__ , 
 		char val , 
 		Type t, 
 		int idx
 ){
-	List* temp = LALLOC(sizeof(List));
+	List* temp = RLALLOC(sizeof(List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = LALLOC(sizeof(char));
+	temp->data = RLALLOC(sizeof(char));
 	*(char*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -701,19 +905,19 @@ static void add_char(
 	*__list__ = temp;                      
 }
 
-static void add_float(
+RLLOCAL void add_float(
 		List** __list__ , 
 		float val , 
 		Type t, 
 		int idx
 ){
-	List* temp = LALLOC(sizeof(List));
+	List* temp = RLALLOC(sizeof(List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = LALLOC(sizeof(float));
+	temp->data = RLALLOC(sizeof(float));
 	*(float*)(temp->data) = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -728,17 +932,17 @@ static void add_float(
 			default : add_voidptr		\
 		)(l , v , t , i);
 
-static void init(List** l){
+RLLOCAL void init(List** l){
 	*l = NULL; 
 }
 
-static LBOOL l_is_empty(void)
+RLLOCAL LBOOL l_is_empty(void)
 {
 	return (global_count == 0);
 }
 
 // the complexity still O(N) in worst case the index helps you to know the data u want to get later
-static void local_l_insert(List** __list__ , int idx , Type type , void* data){
+RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
 	List* local_list = *(__list__);
 
 	if(idx < global_count && idx >= 0){
@@ -747,7 +951,7 @@ static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 				local_list->index++;
 			}
 			if(idx == local_list->index){
-				List* node = LALLOC(sizeof(List));
+				List* node = RLALLOC(sizeof(List));
 				if(node == NULL)
 				{
 					status = LIST_MEMALLOC;
@@ -772,74 +976,76 @@ static void local_l_insert(List** __list__ , int idx , Type type , void* data){
 		add(__list__ ,data , type , global_count++);
 	}
 }
-static void* l_peek(void)
+RLLOCAL void* l_peek(void)
 {
 	return __list__->data;
 }
 
-static void* l_qpeek(void)
+RLLOCAL void* l_qpeek(void)
 {
 	List* temp = __list__;
 	while(temp->next != NULL)	temp = temp->next;
 	return temp->data;
 }
 
-static void* local_l_qpop(List** __list__){
+RLLOCAL void* local_l_qpop(List** __list__){
 	void* d;
 	if(*__list__ == NULL)	return NULL;
 	List* ___temp = *__list__;
 	if((___temp)->next == NULL){
 		d = ___temp->data;
-		LFREE(___temp);
+		RLFREE(___temp);
 		___temp = NULL;
 		global_count--;
 		return d;
 	}
 	while((___temp)->next->next != NULL)	___temp = (___temp)->next;
 	d = ___temp->next->data;
-	LFREE(___temp->next);
+	RLFREE(___temp->next);
 	___temp->next = NULL;
 	global_count--;
 	return d;
 }
 
-static void* l_qpop(){
+RLLOCAL void* l_qpop(){
 	return local_l_qpop(&__list__);
 }
 
-static void* local_l_pop(List** __list__){
+RLLOCAL void* local_l_pop(List** __list__){
 	void* ret;
 	List* temp = *__list__;
 	if(temp == NULL)	return NULL;
 	ret = temp->data;
 	*__list__ = (*__list__)->next;
-	LFREE(temp);
+	RLFREE(temp);
 	global_count--;
 	return ret;
 }
 
-void* l_pop(){
+RLLOCAL void* l_pop(){
 	return local_l_pop(&__list__);
 }
 
-void l_insert(int idx , Type type , void* data){
+RLLOCAL void l_insert(int idx , Type type , void* data){
 	local_l_insert(&__list__ , idx , type , data);
 }
 
 
-#define LAppend(t , d) _Generic((d) , 		\
+#define RLAppend(t , d) _Generic((d) , 		\
 			int : add_int,		\
 			char : add_char,	\
-			float : add_float	\
+			float : add_float,	\
+			default : add_voidptr		\
 		)(&__list__ , d , t  , global_count++);
 
-#define LPush(t , d) _Generic((d) , 		\
+#define RLPush(t , d) _Generic((d) , 		\
 			int : add_int,		\
 			char : add_char,	\
-			float : add_float	\
+			float : add_float,	\
+			default : add_voidptr		\
 		)(&__list__ , d , t  , global_count++);
 
-void l_append(
+RLLOCAL void l_append(
 		Type type,
 		void* data
 )
@@ -848,7 +1054,7 @@ void l_append(
 	add(&__list__ , data, type , global_count++);
 }
 
-static void l_push(
+RLLOCAL void l_push(
 		Type type,
 		void* data
 )
@@ -857,18 +1063,18 @@ static void l_push(
 	add(&__list__ , data, type , global_count++);
 }
 
-void l_clear(){
+RLLOCAL void l_clear(){
 	List* current = __list__;
 	List* temp;
 	while (current != NULL) {
 		temp = current->next; 
-		LFREE(current);        
+		RLFREE(current);        
 		current = temp;       
 	}
 	global_count = 0;
 	init(&__list__);
 }
-static void* local_exec(List* __list__ ,int idx , void* data)
+RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 {
 	if(idx > global_count){	
 		status = LIST_INDEX_OUT_OF_RANGE;
@@ -880,7 +1086,7 @@ static void* local_exec(List* __list__ ,int idx , void* data)
 	}else{
 		status = FINE;
 	}
-	if(idx < 0){
+	if(idx < 0 || idx > global_count){
 		while(__list__ != NULL){
 			switch((__list__)->type){
 				case  VOIDFUNC:{
@@ -892,6 +1098,29 @@ static void* local_exec(List* __list__ ,int idx , void* data)
 						call(data);
 					}
 				}break; 
+				case STRFUNC : {
+					if(data == NULL){
+						string (*call)() = ((string(*)())(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = STR;
+							__list__->data = (string)call();
+						}else{
+							l_append(STR , (void*)call());
+						}
+					}else{
+						string (*call)(void*) = ((string(*)(void*))(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = STR;
+							__list__->data = (string)call(data);
+						}else{
+							l_append(STR , (void*)call(data));
+						}
+					}
+				}break;
+				default :{ 	
+					__list__ = (__list__)->next;
+					continue;
+				}
 			}
 			__list__ = (__list__)->next;
 		}
@@ -902,10 +1131,27 @@ static void* local_exec(List* __list__ ,int idx , void* data)
 					case STRFUNC : {
 						if(data == NULL){
 							string (*call)() = ((string(*)())(__list__)->data);
-							return (char*)call();
+							if(flag == OUTT)
+								return (char*)call();
+							else if(flag == INPLACE) {
+								__list__->type = STR;
+								__list__->data = (string)call();
+							}else{
+								l_append(STR , (void*)call());
+							}
+							return NULL;
 						}else{
 							string (*call)(void*) = ((string(*)(void*))(__list__)->data);
-							return (char*)call(data);
+							if(flag == OUTT){
+								return (char*)call(data);
+							}
+							else if(flag == INPLACE) {
+								__list__->type = STR;
+								__list__->data = (char*)call(data);
+							}else{
+								l_append(STR , (void*)call(data));
+							}
+							return NULL;
 						}
 					}break;
 					case  VOIDFUNC:{
@@ -918,6 +1164,10 @@ static void* local_exec(List* __list__ ,int idx , void* data)
 						}
 						return NULL;
 					}break; 
+					default :{ 
+						__list__ = (__list__)->next;
+						continue;
+					}
 				}
 			}
 			__list__ = (__list__)->next;
@@ -926,11 +1176,11 @@ static void* local_exec(List* __list__ ,int idx , void* data)
 	return NULL;
 }
 
-void* exec(int idx , void* data){
-	return local_exec(__list__ , idx , data);
+RLLOCAL void* exec(int idx , void* data , Exec_Flag flag){
+	return local_exec(__list__ , idx , data , flag);
 }
 
-static void local_l_popidx(
+RLLOCAL void local_l_popidx(
 		List** __list__,
 		int idx
 		)
@@ -949,7 +1199,7 @@ static void local_l_popidx(
 	List* prev = NULL;
 	if (___temp != NULL && ___temp->index == idx) {
 	    *__list__ = ___temp->next;
-	    LFREE(___temp);
+	    RLFREE(___temp);
 	    ___temp = *__list__;
 	    while(___temp != NULL && revesed){
 	        ___temp->index--;
@@ -968,7 +1218,7 @@ static void local_l_popidx(
 	    return;
 	}
 	prev->next = ___temp->next;
-	LFREE(___temp);
+	RLFREE(___temp);
 	___temp = prev->next;
 	while(revesed && ___temp != NULL && ___temp->index > 0){
 		___temp->index--;
@@ -976,36 +1226,88 @@ static void local_l_popidx(
 	}
 	global_count--;
 }
-void l_delete(int idx)
+RLLOCAL void l_delete(int idx)
 {
 	local_l_popidx(&__list__ , idx);
 }
 
-void l_filter(FILTERCALLBACK callback , Type type){
+RLLOCAL void l_filter(FILTERCALLBACK callback , Type type , Filter_Flag flag){
 	List* ___temp = __list__;
 	while(___temp != NULL){
 		if(___temp->type == type){
 			if(!callback(___temp->data)){
 				l_delete(___temp->index);
 			}
-		}else{
+		}else if(flag == ALL){
 			l_delete(___temp->index);
 		}
 		___temp = ___temp->next;
 	}
 }
 
-string l_geterror()
+RLLOCAL void l_map(MAPCALLBACK callback , Type type){
+	List* ___temp = __list__;
+	while(___temp != NULL){
+		if(___temp->type == type){
+			___temp->data = callback(___temp->data);
+		}
+		___temp = ___temp->next;
+	}
+}
+
+RLLOCAL void wait(RLAPIThread thread){
+	RLWait(thread);
+}
+RLLOCAL void kill(RLAPIThread thread)
+{
+	RLKill(thread);
+}
+
+RLLOCAL IfaceThread exec_async(int idx , RLAPIParam data){
+	List* ___temp = __list__;
+
+	IfaceThread th = {0};
+
+	if(___temp == NULL)
+	{
+		status = NULL_VALUE;
+		return th;
+	}
+
+	if(idx < 0 || idx > global_count){
+		status = LIST_INDEX_OUT_OF_RANGE;
+		return th;
+	}
+
+	while(___temp != NULL)
+	{
+		if(___temp->index == idx){
+			RLAPIThread thread = RLCreateThread(___temp->data , data);
+			th.thread = thread;
+			th.Wait = wait;
+			th.Kill = kill;
+			break;
+		}
+		___temp = ___temp->next;
+	}
+	return th;
+}
+
+RLLOCAL string l_geterror()
 {
 	switch(status){
 		case LIST_INDEX_OUT_OF_RANGE : return "[ERROR] list index out of range";
 		case LIST_EMPTY : return "[ERROR] list empty";
 		case LIST_MEMALLOC : return "[ERROR] list allocating memory";
+		case NULL_VALUE : return "[ERROR] NULL value detected";
+		case ERROR_CREATE_THREAD : return "[ERROR] create thread , use GetLastError() or check errorno code ";
+		case ERROR_WAIT_THREAD : return "[ERROR] wait thread , use GetLastError() or check errorno code ";
+		case ERROR_KILL_THREAD : return "[ERROR] kill thread , use GetLastError() or check errorno code ";
 		default : return NULL;
 	}
 }
 
-static void* local_l_get(List* __list__ , int idx)
+RLLOCAL void* local_l_get(List* __list__ , int idx)
 {
 	if(__list__ == NULL){
 		status = LIST_EMPTY;
@@ -1024,11 +1326,13 @@ static void* local_l_get(List* __list__ , int idx)
 		}
 		local_list = (local_list)->next;
 	}
+	status = NULL_VALUE;
+	return NULL;
 }
-void* l_get(int idx){
+RLLOCAL void* l_get(int idx){
 	return local_l_get(__list__ , idx);
 }
-static LBOOL local_l_search(
+RLLOCAL LBOOL local_l_search(
 		List* __list__,
 		int* idx ,
 		Type type ,
@@ -1051,7 +1355,7 @@ static LBOOL local_l_search(
 				}
 			}break;
 			case CHR :
-			case INT:{
+			case INTT:{
 				if(*((int*)data) == (*(int*)___temp->data)){
 					if(idx != NULL)
 						*idx = ___temp->index ;
@@ -1065,18 +1369,23 @@ static LBOOL local_l_search(
 				 	return true;
 				}
 			}break;
-			case BOOL:{
+			case BOOLL:{
 				if(*(LBOOL*)data){
 					if(idx != NULL)
 						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
+			default : {
+				___temp = ___temp->next;
+				continue;
+			 }
 		}
 		___temp = ___temp->next;
 	}
+	return false;
 }
-LBOOL l_search(
+RLLOCAL LBOOL l_search(
 		int* idx ,
 		Type type ,
 		void* data
@@ -1084,7 +1393,7 @@ LBOOL l_search(
 {
 	return local_l_search(__list__ , idx , type , data);
 }
-static void local_l_reverse(List** __list__)
+RLLOCAL void local_l_reverse(List** __list__)
 {
 	if((*__list__) == NULL){
 		status = LIST_EMPTY;
@@ -1115,14 +1424,14 @@ void l_print()
 	}
 	List* local_list = __list__;
 	status = FINE;
-	local_l_reverse(&local_list);
+	//local_l_reverse(&local_list);
 	printf("[\n");
 	while(local_list != NULL){
 		switch((local_list)->type){
 			case CHR:{
 				printf("\n\t[%d] '%c'",(local_list)->index  ,(*(char*)(local_list)->data) );
 			}break;
-			case INT:{
+			case INTT:{
 				printf("\n\t[%d] %d",(local_list)->index  ,(*(int*)(local_list)->data) );
 			}break;
 			case FLT:{
@@ -1130,10 +1439,10 @@ void l_print()
 			}break;
 
 			case STR:{
-				printf("\n\t[%d] \"%s\"",(local_list)->index  , (local_list)->data);
+				printf("\n\t[%d] \"%s\"",(local_list)->index  , (char*)(local_list)->data);
 			}break;
-			case BOOL:{
-				printf("\n\t[%d] %s",(local_list)->index  , ((local_list)->data == "true") ? "true" : "false");
+			case BOOLL:{
+				printf("\n\t[%d] %s",(local_list)->index  , *(int*)(local_list)->data ? "true" : "false");
 			}break;
 			case VOIDPTR :{
 				// printing address of the void ptr
@@ -1167,7 +1476,7 @@ IfaceList list(int count , ...)
 
 	IfaceList cl;
 	global_count = count;
-	size_t c = 0;
+	int c = 0;
 	while(c < count){
 		Type t = va_arg(args , Type);
 		switch(t){
@@ -1175,18 +1484,18 @@ IfaceList list(int count , ...)
 				void* temp = va_arg(args , char*);
 				add(&__list__,temp, CHR , c);
 			}break;
-			case INT:{
+			case INTT:{
 				void* temp= va_arg(args , void*);
-				add(&__list__,temp, INT , c);
+				add(&__list__,temp, INTT , c);
 			}break;
 			case STR:{
 				void* temp = va_arg(args , char*);
 				add(&__list__,temp , STR , c);
 			}break;
-			case BOOL:{
-				int t = va_arg(args , int);
-				void* temp = t ? "true" : "false";
-				add(&__list__,temp, BOOL , c);
+			case BOOLL:{
+				void* t = va_arg(args , void*);
+				void* temp = *(int*)t == true ? "true" : "false";
+				add(&__list__,temp, BOOLL , c);
 			}break;
 			case FLT:{
 				void* temp = va_arg(args , void*);
@@ -1196,7 +1505,7 @@ IfaceList list(int count , ...)
 			case VOIDPTR :{
 				void* temp = va_arg(args , void*);
 				add(&__list__,temp , VOIDPTR , c);
-			}
+			}break;
 			case  VOIDFUNC:{
 				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
 				add(&__list__,(void*)temp , VOIDFUNC , c);
@@ -1239,6 +1548,8 @@ IfaceList list(int count , ...)
 	cl.List_Clear = l_clear;
 	cl.List_Get_Error = l_geterror;
 	cl.List_Filter = l_filter;
+	cl.List_Map = l_map;
+	cl.List_Exec_Async = exec_async;
 #else
 	cl.Push = NULL;
 	cl.SPeek = NULL;
@@ -1257,6 +1568,8 @@ IfaceList list(int count , ...)
 	cl.Clear = l_clear;
 	cl.Get_Error = l_geterror;
 	cl.Filter = l_filter;
+	cl.Map = l_map;
+	cl.Exec_Async = exec_async;
 #endif
 	return cl;
 }
@@ -1276,6 +1589,7 @@ IfaceList stack()
 	cl.Stack_Peek = l_peek;
 	cl.Stack_Pop = l_pop;
 	cl.Stack_Clear = l_clear;
+	cl.List_Exec_Async = NULL;
 	cl.Queue_Peek = NULL;
 	cl.Queue_Pop = NULL;
 	cl.List_Insert = NULL;
@@ -1289,6 +1603,7 @@ IfaceList stack()
 	cl.List_Clear = NULL;
 	cl.List_Get_Error = NULL;
 	cl.List_Filter = NULL;
+	cl.List_Map = NULL;
 #else
 	cl.Is_Empty = l_is_empty;
 	cl.Push = l_push;
@@ -1307,6 +1622,8 @@ IfaceList stack()
 	cl.Print = NULL;
 	cl.Exec_Func = NULL;
 	cl.Filter = NULL;
+	cl.Map = NULL;
+	cl.Exec_Async = NULL;
 #endif
 	return cl;
 }
@@ -1341,6 +1658,8 @@ IfaceList queue(void)
 	cl.List_Clear = NULL;
 	cl.List_Get_Error = NULL;
 	cl.List_Filter = NULL;
+	cl.List_Map = NULL;
+	cl.List_Exec_Async = NULL;
 #else
 	cl.QPop = l_qpop;
 	cl.QPeek = l_qpeek;
@@ -1359,6 +1678,8 @@ IfaceList queue(void)
 	cl.Print = NULL;
 	cl.Exec_Func = NULL;
 	cl.Filter = NULL;
+	cl.Map = NULL;
+	cl.Exec_Async = NULL;
 #endif
 	return cl;
 }
