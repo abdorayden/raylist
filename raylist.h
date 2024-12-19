@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2024 Ray Den	raylist v2.0.0				*
+*			Copyright (c) 2024 Ray Den	raylist v2.1.0				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -75,31 +75,28 @@ typedef enum{
 RLLOCAL LBOOL revesed = false;
 
 /*
+ *	check if stdlib is included
+ * */
+
+#if !defined(_STDLIB_H)
+#include <stdlib.h>
+#endif
+
+/*
  *	if not defined RLALLOC the developer not using other allocation memory style
  *	so we used the defualt 
  * */
+
 #ifndef RLALLOC
-/*
- *	check if stdlib is included
- * */
-#if defined(_STDLIB_H) && _STDLIB_H == 1
-#include <stdlib.h>
+#define RLALLOC	malloc
 #endif
 
-#define RLALLOC	malloc
-
+#ifndef RLREALLOC
+#define RLREALLOC	realloc
 #endif
 
 #ifndef RLFREE
-/*
- *	check if stdlib is included
- * */
-#if defined(_STDLIB_H) && _STDLIB_H == 1
-#include <stdlib.h>
-#endif
-
 #define RLFREE	free
-
 #endif
 
 #ifndef RLUNUSED
@@ -137,19 +134,19 @@ RLLOCAL LBOOL revesed = false;
 
 
 // Type enum contained bunch of types helps functions any variables type will work for
-// STR for strings BOOLL for boolean ... 
+// RL_STR for strings RL_BOOL for boolean ... 
 typedef enum{
-	CHR = 0, 	// char type
-	STR    , 	// string type
-	BOOLL   ,	// bool type
-	INTT    , 	// int type
-	FLT    , 	// float type
-	VOIDPTR,	// void pointer type
+	RL_CHR = 0 , 	// char type
+	RL_STR     , 	// string type
+	RL_BOOL    ,	// bool type
+	RL_INT     , 	// int type
+	RL_FLT     , 	// float type
+	RL_VOIDPTR ,	// void pointer type
 
-	VOIDFUNC,
-	INTFUNC ,
-	CHARFUNC,
-	STRFUNC
+	RL_VOIDFUNC,
+	RL_INTFUNC ,
+	RL_CHARFUNC,
+	RL_STRFUNC
 }Type;
 
 typedef enum{
@@ -194,11 +191,32 @@ struct list {
 
 typedef struct list List;
 
-// global count for index
-RLLOCAL int global_count = 0;
+/*
+ * 	SetObject macro used to change a list object level
+ *	IfaceList l = list(0);
+ *	IfaceList p = stack(Buf_Disable);
+ *	SetObject(1);
+ *	start from 1
+ *	if the number was 2 it will access p object
+ * */
+
+#ifndef LIST_MAX
+#define LIST_MAX 10
+#endif
+static int list_index = 0;
+
+#define SetObject(x)								\
+	do{									\
+		if(!strcmp(typeof(x) , "int") && x < LIST_MAX && x > 0)		\
+			list_index = x - 1;					\
+	}while(0)								\
+
 
 // Global list variable 
-RLLOCAL List* __list__ = NULL;
+RLLOCAL List* __list__[LIST_MAX];
+
+// global count for index
+RLLOCAL int global_count[LIST_MAX];
 
 // filter callback function 
 typedef enum{
@@ -214,7 +232,7 @@ typedef void* (*MAPCALLBACK)(void*);
 // Exec function Flag
 typedef enum {
 	/* return value from Exec function
-	 * OUTT flag is not enabled if index parameter in Exec_Func was out of range
+	 * OUTT flag is not enabled if index parameter in Exec_Sync was out of range
 	 * */ 
 	OUTT, 
 	/* the return value will replace function callback index ,
@@ -226,10 +244,15 @@ typedef enum {
 	ADDED
 }Exec_Flag;
 
+/*	definitions 
+ *		for more readable code
+ *	*/
+#define interface 		struct
+
 /*
  *	interface for manipulate thread handle 
  * */
-typedef struct {
+typedef interface {
 	// the thread in it self
 	RLAPIThread thread;
 	/*
@@ -245,6 +268,13 @@ typedef struct {
 }IfaceThread;
 
 /*
+ *	this for limit size of stack or queue
+ * */
+#define Buf_Disable  -1	// NOTE : if this flag is enabled stack or queue will add data dynamic
+RLLOCAL int buffer = 0;
+RLLOCAL LBOOL limit_buf	= false;
+
+/*
  *	IfaceList struct act like class all thouse functions point to other functions 
  *
  *	Example :
@@ -255,11 +285,25 @@ typedef struct {
  *		test.List_Append = foo;
  *		
  * */
-typedef struct {
+
+typedef interface {
 #ifndef USING_LIST
+
+	/*
+	 *	Queue_Max_Buffer() return true if buffer equal to fixed buffer else false
+	 * */
+	LBOOL (*Queue_Max_Buffer)(void);
+
+	/*
+	 *	Stack_Max_Buffer() return true if buffer equal to fixed buffer else false
+	 * */
+
+	LBOOL (*Stack_Max_Buffer)(void);
+
 	/*
 	 *	return true if stack is empty else false
 	 * */
+
 	LBOOL (*Queue_Is_Empty)(
 			void
 	);
@@ -280,7 +324,7 @@ typedef struct {
 	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
-	 *		my_list.Queue_Push(STR , "Hello World");
+	 *		my_list.Queue_Push(RL_STR , "Hello World");
 	 *
 	 * */
 	void (*Queue_Push)(
@@ -305,7 +349,6 @@ typedef struct {
 			void
 	);
 
-	///////////
 	/*
 	 *	return true if list is empty else false
 	 * */
@@ -335,7 +378,7 @@ typedef struct {
 	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
-	 *		my_list.Stack_Push(STR , "Hello World");
+	 *		my_list.Stack_Push(RL_STR , "Hello World");
 	 *
 	 * */
 	void (*Stack_Push)(
@@ -368,7 +411,7 @@ typedef struct {
 	 *		void* data the  :		data
 	 *	)
 	 *	Exemple :
-	 *		my_list.List_Insert(1 , BOOLL , true);
+	 *		my_list.List_Insert(1 , RL_BOOL , true);
 	 * */
 	void (*List_Insert)(
 			int idx,
@@ -387,7 +430,7 @@ typedef struct {
 	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
-	 *		my_list.List_Append(STR , "Hello World");
+	 *		my_list.List_Append(RL_STR , "Hello World");
 	 *
 	 * */
 	void (*List_Append)(
@@ -405,7 +448,7 @@ typedef struct {
 	 *					before : 	[
 	 *								3,2,7,5,1
 	 *							]
-	 *	my_list.List_Filter(check_mod_of_num , INTT);
+	 *	my_list.List_Filter(check_mod_of_num , RL_INT);
 	 *					after : 	[
 	 *								2
 	 *							]
@@ -426,7 +469,7 @@ typedef struct {
 	 *
 	 *	Example :
 	 *		int var;
-	 *		if(my_list.List_Search(&var, STR , "Hello World"))	// handle (var contained the index of the data)
+	 *		if(my_list.List_Search(&var, RL_STR , "Hello World"))	// handle (var contained the index of the data)
 	 *		else 							// handle
 	 *
 	 * */
@@ -475,6 +518,7 @@ typedef struct {
 	/*
 	 *	List_Print function will print all our data in standerd output 
 	 * */
+
 	void (*List_Print)(
 			void
 	);
@@ -483,13 +527,13 @@ typedef struct {
 	 * 	printf("Hello World");
 	 * }
 	 * IfaceList my_list = list(0);
-	 * my_list.List_Append(VOIDFUNC , bar);
+	 * my_list.List_Append(RL_VOIDFUNC , bar);
 	 * 	the list now contains a function 
 	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
-	 * my_list.List_Exec_Func(0 , NULL);
+	 * my_list.List_Exec_Sync(0 , NULL);
 	 * */
 
-	void* (*List_Exec_Func)(
+	void* (*List_Exec_Sync)(
 			int idx,
 			void* data,
 			Exec_Flag flag
@@ -519,10 +563,10 @@ typedef struct {
 	 *		}
 	 *		IfaceList my_list = list(0);
 	 *		for(int i = 0 ; i < 4 ; i++){
-	 *			RLAppend(i , INTT);
+	 *			RLAppend(i , RL_INT);
 	 *		}
 	 *		list : [0,1,2,3]
-	 *		my_list.List_Map(callback , INTT);
+	 *		my_list.List_Map(callback , RL_INT);
 	 *		list : [0,1,10,3]
 	 * */ 
 	void (*List_Map)(
@@ -532,7 +576,7 @@ typedef struct {
 	/*
 	 *	exec asynchronous functiona
 	 *	IfaceList my_list = list(0);
-	 *	my_list.Append(STRFUNC , func);
+	 *	my_list.Append(RL_STRFUNC , func);
 	 *	my_list.List_Exec_Async(0, NULL).Wait();
 	 *
 	 * */
@@ -540,7 +584,17 @@ typedef struct {
 			int idx,
 			RLAPIParam data
 	);
+
+	/*
+	 *	return length of list
+	 * */
+	int (*List_Len)(void);
 #else
+	/*
+	 *	Max_Buffer() return true if buffer equal to fixed buffer else false
+	 * */
+	LBOOL (*Max_Buffer)(void);
+
 	/*
 	 *	return true if list is empty else false
 	 * */
@@ -558,7 +612,7 @@ typedef struct {
 	 *	NOTE : the append method works like push in stack algorithm
 	 *
 	 *	Example :
-	 *		my_list.Push(STR , "Hello World");
+	 *		my_list.Push(RL_STR , "Hello World");
 	 *
 	 * */
 	void (*Push)(
@@ -600,7 +654,7 @@ typedef struct {
 	 *		void* data the  :		data
 	 *	)
 	 *	Exemple :
-	 *		my_list.Insert(1 , BOOLL , true);
+	 *		my_list.Insert(1 , RL_BOOL , true);
 	 * */
 	void (*Insert)(
 			int idx,
@@ -616,7 +670,7 @@ typedef struct {
 	 * 	)
 	 *
 	 *	Example :
-	 *		my_list.Append(STR , "Hello World");
+	 *		my_list.Append(RL_STR , "Hello World");
 	 *
 	 * */
 	void (*Append)(
@@ -634,7 +688,7 @@ typedef struct {
 	 *					before : 	[
 	 *								3,2,7,5,1
 	 *							]
-	 *	my_list.List_Filter(check_mod_of_num , INTT);
+	 *	my_list.List_Filter(check_mod_of_num , RL_INT);
 	 *					after : 	[
 	 *								2
 	 *							]
@@ -655,7 +709,7 @@ typedef struct {
 	 *
 	 *	Example :
 	 *		int var;
-	 *		if(my_list.Search(&var, STR , "Hello World"))	// handle (var contained the index of the data)
+	 *		if(my_list.Search(&var, RL_STR , "Hello World"))	// handle (var contained the index of the data)
 	 *		else 							// handle
 	 *
 	 * */
@@ -712,13 +766,13 @@ typedef struct {
 	 * 	printf("Hello World");
 	 * }
 	 * IfaceList my_list = list(0);
-	 * my_list.Append(VOIDFUNC , bar);
+	 * my_list.Append(RL_VOIDFUNC , bar);
 	 * 	the list now contains a function 
 	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
-	 * my_list.Exec_Func(0 , NULL);
+	 * my_list.Exec_Sync(0 , NULL);
 	 * */
 
-	void* (*Exec_Func)(
+	void* (*Exec_Sync)(
 			int idx,
 			void* data,
 			Exec_Flag flag
@@ -747,10 +801,10 @@ typedef struct {
 	 *		}
 	 *		IfaceList my_list = list(0);
 	 *		for(int i = 0 ; i < 4 ; i++){
-	 *			RLAppend(i , INTT);
+	 *			RLAppend(i , RL_INT);
 	 *		}
 	 *		list : [0,1,2,3]
-	 *		my_list.Map(callback , INTT);
+	 *		my_list.Map(callback , RL_INT);
 	 *		list : [0,1,10,3]
 	 * */ 
 	void (*Map)(
@@ -760,7 +814,7 @@ typedef struct {
 	/*
 	 *	exec asynchronous functiona
 	 *	IfaceList my_list = list(0);
-	 *	my_list.Append(STRFUNC , func);
+	 *	my_list.Append(RL_STRFUNC , func);
 	 *	my_list.List_Exec_Async(0, NULL).Wait();
 	 *
 	 * */
@@ -768,6 +822,11 @@ typedef struct {
 			int idx,
 			RLAPIParam data
 	);
+
+	/*
+	 *	return length of list
+	 * */
+	int (*Len)(void);
 #endif
 }IfaceList;
 
@@ -777,9 +836,9 @@ IfaceList list(
 		... 		// data : <TYPE> , <VALUE>
 );
 
-IfaceList stack(void);
+IfaceList stack(int buffer_size);
 
-IfaceList queue(void);
+IfaceList queue(int buffer_size);
 
 #endif
 
@@ -932,20 +991,23 @@ RLLOCAL void add_float(
 			default : add_voidptr		\
 		)(l , v , t , i);
 
-RLLOCAL void init(List** l){
-	*l = NULL; 
+RLLOCAL void init(void){
+	for(int x = 0 ; x < LIST_MAX ; x++){
+		__list__[x] = NULL;
+		global_count[x] = 0;
+	}
 }
 
 RLLOCAL LBOOL l_is_empty(void)
 {
-	return (global_count == 0);
+	return (global_count[list_index] == 0);
 }
 
 // the complexity still O(N) in worst case the index helps you to know the data u want to get later
 RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
 	List* local_list = *(__list__);
 
-	if(idx < global_count && idx >= 0){
+	if(idx < global_count[list_index] && idx >= 0){
 		while(local_list != NULL){
 			if(local_list->index > idx){	
 				local_list->index++;
@@ -971,19 +1033,27 @@ RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
 
 			local_list = local_list->next;
 		}
-		global_count++;
+		global_count[list_index]++;
 	}else{
-		add(__list__ ,data , type , global_count++);
+		add(__list__ ,data , type , global_count[list_index]++);
 	}
 }
 RLLOCAL void* l_peek(void)
 {
-	return __list__->data;
+	return __list__[list_index]->data;
+}
+
+RLLOCAL LBOOL l_max_buf(){
+	return (limit_buf && buffer == global_count[list_index]);
+}
+
+RLLOCAL int l_len(){
+	return global_count[list_index];
 }
 
 RLLOCAL void* l_qpeek(void)
 {
-	List* temp = __list__;
+	List* temp = __list__[list_index];
 	while(temp->next != NULL)	temp = temp->next;
 	return temp->data;
 }
@@ -996,19 +1066,19 @@ RLLOCAL void* local_l_qpop(List** __list__){
 		d = ___temp->data;
 		RLFREE(___temp);
 		___temp = NULL;
-		global_count--;
+		global_count[list_index]--;
 		return d;
 	}
 	while((___temp)->next->next != NULL)	___temp = (___temp)->next;
 	d = ___temp->next->data;
 	RLFREE(___temp->next);
 	___temp->next = NULL;
-	global_count--;
+	global_count[list_index]--;
 	return d;
 }
 
 RLLOCAL void* l_qpop(){
-	return local_l_qpop(&__list__);
+	return local_l_qpop(&__list__[list_index]);
 }
 
 RLLOCAL void* local_l_pop(List** __list__){
@@ -1018,16 +1088,16 @@ RLLOCAL void* local_l_pop(List** __list__){
 	ret = temp->data;
 	*__list__ = (*__list__)->next;
 	RLFREE(temp);
-	global_count--;
+	global_count[list_index]--;
 	return ret;
 }
 
 RLLOCAL void* l_pop(){
-	return local_l_pop(&__list__);
+	return local_l_pop(&__list__[list_index]);
 }
 
 RLLOCAL void l_insert(int idx , Type type , void* data){
-	local_l_insert(&__list__ , idx , type , data);
+	local_l_insert(&__list__[list_index] , idx , type , data);
 }
 
 
@@ -1036,14 +1106,28 @@ RLLOCAL void l_insert(int idx , Type type , void* data){
 			char : add_char,	\
 			float : add_float,	\
 			default : add_voidptr		\
-		)(&__list__ , d , t  , global_count++);
+		)(&__list__[list_index] , d , t  , global_count[list_index]++);
 
-#define RLPush(t , d) _Generic((d) , 		\
-			int : add_int,		\
-			char : add_char,	\
-			float : add_float,	\
-			default : add_voidptr		\
-		)(&__list__ , d , t  , global_count++);
+#define RLPush(t , d) 												\
+	do{													\
+		if(limit_buf){											\
+			if(global_count[list_index] < buffer){							\
+				_Generic((d) ,	 								\
+					int : add_int,								\
+					char : add_char,							\
+					float : add_float,							\
+					default : add_voidptr							\
+				)(&__list__[list_index] , d , t  , global_count[list_index]++);			\
+			}											\
+		}else{												\
+				_Generic((d) ,	 								\
+					int : add_int,								\
+					char : add_char,							\
+					float : add_float,							\
+					default : add_voidptr							\
+				)(&__list__[list_index] , d , t  , global_count[list_index]++);			\
+		}												\
+	}while(0)
 
 RLLOCAL void l_append(
 		Type type,
@@ -1051,7 +1135,7 @@ RLLOCAL void l_append(
 )
 {
 	if(status != FINE) status = FINE;
-	add(&__list__ , data, type , global_count++);
+	add(&__list__[list_index] , data, type , global_count[list_index]++);
 }
 
 RLLOCAL void l_push(
@@ -1060,23 +1144,30 @@ RLLOCAL void l_push(
 )
 {
 	if(status != FINE) status = FINE;
-	add(&__list__ , data, type , global_count++);
+	if(limit_buf){
+		if(global_count[list_index] < buffer)
+			add(&__list__[list_index] , data, type , global_count[list_index]++);
+	}else{
+		add(&__list__[list_index] , data, type , global_count[list_index]++);
+	}
 }
 
 RLLOCAL void l_clear(){
-	List* current = __list__;
-	List* temp;
-	while (current != NULL) {
-		temp = current->next; 
-		RLFREE(current);        
-		current = temp;       
+	for(int x = 0 ; x < list_index ; x++){
+		List* current = __list__[x];
+		List* temp;
+		while (current != NULL) {
+			temp = current->next; 
+			RLFREE(current);        
+			current = temp;       
+		}
 	}
-	global_count = 0;
-	init(&__list__);
+	init();
+	revesed = false;
 }
 RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 {
-	if(idx > global_count){	
+	if(idx > global_count[list_index]){	
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return NULL;
 	
@@ -1086,10 +1177,12 @@ RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 	}else{
 		status = FINE;
 	}
-	if(idx < 0 || idx > global_count){
+	if(idx < 0 || idx > global_count[list_index]){
 		while(__list__ != NULL){
 			switch((__list__)->type){
-				case  VOIDFUNC:{
+				// NOTE : OUTT flag will not work in that case
+				// return value will block the loop
+				case  RL_VOIDFUNC:{
 					if(data == NULL){
 						void (*call)() = (void(*)())(__list__)->data;
 						call();
@@ -1098,22 +1191,60 @@ RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 						call(data);
 					}
 				}break; 
-				case STRFUNC : {
+				case RL_CHARFUNC : {
+					if(data == NULL){
+						char* (*call)() = ((char*(*)())(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = RL_CHR;
+							__list__->data = (char*)call();
+						}else{
+							l_append(RL_CHR , (void*)call());
+						}
+					}else{
+						char* (*call)(void*) = ((char*(*)(void*))(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = RL_CHR;
+							__list__->data = (char*)call(data);
+						}else{
+							l_append(RL_CHR , (void*)call(data));
+						}
+					}
+				}break;
+				case RL_INTFUNC : {
+					if(data == NULL){
+						int* (*call)() = ((int*(*)())(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = RL_INT;
+							__list__->data = (int*)call();
+						}else{
+							l_append(RL_INT , (void*)call());
+						}
+					}else{
+						int* (*call)(void*) = ((int*(*)(void*))(__list__)->data);
+						if(flag == INPLACE) {
+							__list__->type = RL_INT;
+							__list__->data = (int*)call(data);
+						}else{
+							l_append(RL_INT , (void*)call(data));
+						}
+					}
+				}break;
+				case RL_STRFUNC : {
 					if(data == NULL){
 						string (*call)() = ((string(*)())(__list__)->data);
 						if(flag == INPLACE) {
-							__list__->type = STR;
+							__list__->type = RL_STR;
 							__list__->data = (string)call();
 						}else{
-							l_append(STR , (void*)call());
+							l_append(RL_STR , (void*)call());
 						}
 					}else{
 						string (*call)(void*) = ((string(*)(void*))(__list__)->data);
 						if(flag == INPLACE) {
-							__list__->type = STR;
+							__list__->type = RL_STR;
 							__list__->data = (string)call(data);
 						}else{
-							l_append(STR , (void*)call(data));
+							l_append(RL_STR , (void*)call(data));
 						}
 					}
 				}break;
@@ -1128,33 +1259,87 @@ RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 		while(__list__ != NULL){
 			if((__list__)->index == idx){
 				switch((__list__)->type){
-					case STRFUNC : {
+					case RL_STRFUNC : {
 						if(data == NULL){
 							string (*call)() = ((string(*)())(__list__)->data);
 							if(flag == OUTT)
 								return (char*)call();
 							else if(flag == INPLACE) {
-								__list__->type = STR;
+								__list__->type = RL_STR;
 								__list__->data = (string)call();
 							}else{
-								l_append(STR , (void*)call());
+								l_append(RL_STR , (void*)call());
 							}
 							return NULL;
 						}else{
 							string (*call)(void*) = ((string(*)(void*))(__list__)->data);
 							if(flag == OUTT){
-								return (char*)call(data);
+								return (string)call(data);
 							}
 							else if(flag == INPLACE) {
-								__list__->type = STR;
+								__list__->type = RL_STR;
 								__list__->data = (char*)call(data);
 							}else{
-								l_append(STR , (void*)call(data));
+								l_append(RL_STR , (void*)call(data));
 							}
 							return NULL;
 						}
 					}break;
-					case  VOIDFUNC:{
+					case RL_CHARFUNC : {
+						// NOTE : callback function can't return local address variable 
+						// 		declare global variable or declare it as static
+						if(data == NULL){
+							char* (*call)() = ((char*(*)())(__list__)->data);
+							if(flag == OUTT){
+								return (void*)call();
+							}
+							else if(flag == INPLACE) {
+								__list__->type = RL_CHR;
+								__list__->data = (char*)call();
+							}else{
+								l_append(RL_CHR , (void*)call());
+							}
+						}else{
+							char* (*call)(void*) = ((char*(*)(void*))(__list__)->data);
+							if(flag == OUTT){
+								return (char*)call(data);
+							}
+							else if(flag == INPLACE) {
+								__list__->type = RL_INT;
+								__list__->data = (char*)call(data);
+							}else{
+								l_append(RL_CHR , (void*)call(data));
+							}
+						}
+					}break;
+					case RL_INTFUNC : {
+						// NOTE : callback function can't return local address variable 
+						// 		declare global variable or declare it as static
+						if(data == NULL){
+							int* (*call)() = ((int*(*)())(__list__)->data);
+							if(flag == OUTT){
+								return (void*)call();
+							}
+							else if(flag == INPLACE) {
+								__list__->type = RL_INT;
+								__list__->data = (int*)call();
+							}else{
+								l_append(RL_INT , (void*)call());
+							}
+						}else{
+							int* (*call)(void*) = ((int*(*)(void*))(__list__)->data);
+							if(flag == OUTT){
+								return (int*)call(data);
+							}
+							else if(flag == INPLACE) {
+								__list__->type = RL_INT;
+								__list__->data = (int*)call(data);
+							}else{
+								l_append(RL_INT , (void*)call(data));
+							}
+						}
+					}break;
+					case  RL_VOIDFUNC:{
 						if(data == NULL){
 							void (*call)() = (void(*)())(__list__)->data;
 							call();
@@ -1177,7 +1362,7 @@ RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
 }
 
 RLLOCAL void* exec(int idx , void* data , Exec_Flag flag){
-	return local_exec(__list__ , idx , data , flag);
+	return local_exec(__list__[list_index] , idx , data , flag);
 }
 
 RLLOCAL void local_l_popidx(
@@ -1189,7 +1374,7 @@ RLLOCAL void local_l_popidx(
 		status = LIST_EMPTY;
 		return;
 	}
-	if(idx > global_count || idx < 0)
+	if(idx > global_count[list_index] || idx < 0)
 	{
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return;
@@ -1205,7 +1390,7 @@ RLLOCAL void local_l_popidx(
 	        ___temp->index--;
 	        ___temp =  ___temp->next;
 	    }
-	    global_count--;
+	    global_count[list_index]--;
 	    return;
 	}
 	while (___temp != NULL && ___temp->index != idx) {
@@ -1224,15 +1409,15 @@ RLLOCAL void local_l_popidx(
 		___temp->index--;
 		___temp =  ___temp->next;
 	}
-	global_count--;
+	global_count[list_index]--;
 }
 RLLOCAL void l_delete(int idx)
 {
-	local_l_popidx(&__list__ , idx);
+	local_l_popidx(&__list__[list_index] , idx);
 }
 
 RLLOCAL void l_filter(FILTERCALLBACK callback , Type type , Filter_Flag flag){
-	List* ___temp = __list__;
+	List* ___temp = __list__[list_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
 			if(!callback(___temp->data)){
@@ -1246,7 +1431,7 @@ RLLOCAL void l_filter(FILTERCALLBACK callback , Type type , Filter_Flag flag){
 }
 
 RLLOCAL void l_map(MAPCALLBACK callback , Type type){
-	List* ___temp = __list__;
+	List* ___temp = __list__[list_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
 			___temp->data = callback(___temp->data);
@@ -1264,7 +1449,7 @@ RLLOCAL void kill(RLAPIThread thread)
 }
 
 RLLOCAL IfaceThread exec_async(int idx , RLAPIParam data){
-	List* ___temp = __list__;
+	List* ___temp = __list__[list_index];
 
 	IfaceThread th = {0};
 
@@ -1274,7 +1459,7 @@ RLLOCAL IfaceThread exec_async(int idx , RLAPIParam data){
 		return th;
 	}
 
-	if(idx < 0 || idx > global_count){
+	if(idx < 0 || idx > global_count[list_index]){
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return th;
 	}
@@ -1313,7 +1498,7 @@ RLLOCAL void* local_l_get(List* __list__ , int idx)
 		status = LIST_EMPTY;
 		return NULL;
 	}
-	if(idx > global_count || idx < 0){
+	if(idx > global_count[list_index] || idx < 0){
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return NULL;
 	}
@@ -1330,7 +1515,7 @@ RLLOCAL void* local_l_get(List* __list__ , int idx)
 	return NULL;
 }
 RLLOCAL void* l_get(int idx){
-	return local_l_get(__list__ , idx);
+	return local_l_get(__list__[list_index] , idx);
 }
 RLLOCAL LBOOL local_l_search(
 		List* __list__,
@@ -1347,29 +1532,29 @@ RLLOCAL LBOOL local_l_search(
 	status = FINE;
 	while(___temp != NULL){
 		switch(type){
-			case STR :{
+			case RL_STR :{
 				if(data == ___temp->data){
 					if(idx != NULL)
 						*idx = ___temp->index ;
 					return true;
 				}
 			}break;
-			case CHR :
-			case INTT:{
+			case RL_CHR :
+			case RL_INT:{
 				if(*((int*)data) == (*(int*)___temp->data)){
 					if(idx != NULL)
 						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
-			case FLT: {
+			case RL_FLT: {
 				if(*(float*)data == *(float*)___temp->data){
 					if(idx != NULL)
 						*idx = ___temp->index ;
 				 	return true;
 				}
 			}break;
-			case BOOLL:{
+			case RL_BOOL:{
 				if(*(LBOOL*)data){
 					if(idx != NULL)
 						*idx = ___temp->index ;
@@ -1391,7 +1576,7 @@ RLLOCAL LBOOL l_search(
 		void* data
 	     )
 {
-	return local_l_search(__list__ , idx , type , data);
+	return local_l_search(__list__[list_index] , idx , type , data);
 }
 RLLOCAL void local_l_reverse(List** __list__)
 {
@@ -1413,51 +1598,51 @@ RLLOCAL void local_l_reverse(List** __list__)
 	revesed = !revesed;
 }
 void l_reverse(){
-	local_l_reverse(&__list__);
+	local_l_reverse(&__list__[list_index]);
 }
 void l_print()
 {
-	if(__list__ == NULL){	
+	if(__list__[list_index] == NULL){	
 		printf("[NULL]");
 		status = LIST_EMPTY;
 		return ;
 	}
-	List* local_list = __list__;
+	List* local_list = __list__[list_index];
 	status = FINE;
 	//local_l_reverse(&local_list);
 	printf("[\n");
 	while(local_list != NULL){
 		switch((local_list)->type){
-			case CHR:{
+			case RL_CHR:{
 				printf("\n\t[%d] '%c'",(local_list)->index  ,(*(char*)(local_list)->data) );
 			}break;
-			case INTT:{
+			case RL_INT:{
 				printf("\n\t[%d] %d",(local_list)->index  ,(*(int*)(local_list)->data) );
 			}break;
-			case FLT:{
+			case RL_FLT:{
 				printf("\n\t[%d] %f",(local_list)->index  ,(*(float*)(local_list)->data) );
 			}break;
 
-			case STR:{
+			case RL_STR:{
 				printf("\n\t[%d] \"%s\"",(local_list)->index  , (char*)(local_list)->data);
 			}break;
-			case BOOLL:{
+			case RL_BOOL:{
 				printf("\n\t[%d] %s",(local_list)->index  , *(int*)(local_list)->data ? "true" : "false");
 			}break;
-			case VOIDPTR :{
+			case RL_VOIDPTR :{
 				// printing address of the void ptr
 				printf("\n\t[%d] %p",(local_list)->index , (local_list)->data);
 			}break;
-			case  INTFUNC:{
+			case  RL_INTFUNC:{
 				printf("\n\t<int function : %p><index : %d>" ,(local_list)->data,(local_list)->index);
 			}break; 
-			case  CHARFUNC:{
+			case  RL_CHARFUNC:{
 				printf("\n\t<character function : %p><index : %d>", (local_list)->data,(local_list)->index);
 			}break; 
-			case  STRFUNC :{
+			case  RL_STRFUNC :{
 				printf("\n\t<string function : %p><index : %d>", (local_list)->data,(local_list)->index);
 			}break; 
-			case  VOIDFUNC:{
+			case  RL_VOIDFUNC:{
 				printf("\n\t<void function : %p><index : %d>" ,(local_list)->data,(local_list)->index);
 			}break;
 
@@ -1470,57 +1655,57 @@ void l_print()
 
 IfaceList list(int count , ...)
 {
-	init(&__list__);
+	init();
 	va_list args;
 	va_start(args , count);
 
 	IfaceList cl;
-	global_count = count;
+	global_count[list_index] = count;
 	int c = 0;
 	while(c < count){
 		Type t = va_arg(args , Type);
 		switch(t){
-			case CHR:{
+			case RL_CHR:{
 				void* temp = va_arg(args , char*);
-				add(&__list__,temp, CHR , c);
+				add(&__list__[list_index],temp, RL_CHR , c);
 			}break;
-			case INTT:{
+			case RL_INT:{
 				void* temp= va_arg(args , void*);
-				add(&__list__,temp, INTT , c);
+				add(&__list__[list_index],temp, RL_INT , c);
 			}break;
-			case STR:{
+			case RL_STR:{
 				void* temp = va_arg(args , char*);
-				add(&__list__,temp , STR , c);
+				add(&__list__[list_index],temp , RL_STR , c);
 			}break;
-			case BOOLL:{
+			case RL_BOOL:{
 				void* t = va_arg(args , void*);
 				void* temp = *(int*)t == true ? "true" : "false";
-				add(&__list__,temp, BOOLL , c);
+				add(&__list__[list_index],temp, RL_BOOL , c);
 			}break;
-			case FLT:{
+			case RL_FLT:{
 				void* temp = va_arg(args , void*);
 				float* ttemp = (float*)temp;
-				add(&__list__,ttemp , FLT , c);
+				add(&__list__[list_index],ttemp , RL_FLT , c);
 			}break;
-			case VOIDPTR :{
+			case RL_VOIDPTR :{
 				void* temp = va_arg(args , void*);
-				add(&__list__,temp , VOIDPTR , c);
+				add(&__list__[list_index],temp , RL_VOIDPTR , c);
 			}break;
-			case  VOIDFUNC:{
+			case  RL_VOIDFUNC:{
 				VOIDFUNCTION temp = va_arg(args ,VOIDFUNCTION);
-				add(&__list__,(void*)temp , VOIDFUNC , c);
+				add(&__list__[list_index],(void*)temp , RL_VOIDFUNC , c);
 			}break; 
-			case  INTFUNC :{
+			case  RL_INTFUNC :{
 				INTEGERFUNCTION temp = va_arg(args ,INTEGERFUNCTION);
-				add(&__list__,(void*)temp , INTFUNC , c);
+				add(&__list__[list_index],(void*)temp , RL_INTFUNC , c);
 			}break;
-			case  CHARFUNC:{
+			case  RL_CHARFUNC:{
 				CHARACTERFUNCTION temp = va_arg(args ,CHARACTERFUNCTION);
-				add(&__list__,(void*)temp , CHARFUNC , c);
+				add(&__list__[list_index],(void*)temp , RL_CHARFUNC , c);
 			}break;
-			case  STRFUNC :{
+			case  RL_STRFUNC :{
 				STRINGFUNCTION temp = va_arg(args ,STRINGFUNCTION);
-				add(&__list__,(void*)temp , STRFUNC , c);
+				add(&__list__[list_index],(void*)temp , RL_STRFUNC , c);
 			}break; 
 		}
 		c++;
@@ -1528,6 +1713,8 @@ IfaceList list(int count , ...)
 	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
+	cl.Queue_Max_Buffer = NULL;
+	cl.Stack_Max_Buffer = NULL;
 	cl.Queue_Push = NULL;
 	cl.Stack_Is_Empty = NULL;
 	cl.Stack_Get_Error = NULL;
@@ -1544,13 +1731,15 @@ IfaceList list(int count , ...)
 	cl.List_Search = l_search;
 	cl.List_Reverse = l_reverse;
 	cl.List_Print = l_print;
-	cl.List_Exec_Func = exec;
+	cl.List_Exec_Sync = exec;
 	cl.List_Clear = l_clear;
 	cl.List_Get_Error = l_geterror;
 	cl.List_Filter = l_filter;
 	cl.List_Map = l_map;
 	cl.List_Exec_Async = exec_async;
+	cl.List_Len = l_len;
 #else
+	cl.Max_Buffer = NULL;
 	cl.Push = NULL;
 	cl.SPeek = NULL;
 	cl.SPop = NULL;
@@ -1564,24 +1753,32 @@ IfaceList list(int count , ...)
 	cl.Reverse = l_reverse;
 	cl.Is_Empty = l_is_empty;
 	cl.Print = l_print;
-	cl.Exec_Func = exec;
+	cl.Exec_Sync = exec;
 	cl.Clear = l_clear;
 	cl.Get_Error = l_geterror;
 	cl.Filter = l_filter;
 	cl.Map = l_map;
 	cl.Exec_Async = exec_async;
+	cl.Len = l_len;
 #endif
 	return cl;
 }
 
-IfaceList stack()
+IfaceList stack(int buffer_size)
 {
-	init(&__list__);
+	init();
+	if(buffer_size != Buf_Disable){
+		limit_buf = true;
+		buffer = buffer_size;
+	}
 
 	IfaceList cl;
-	global_count = 0;
+	global_count[list_index] = 0;
 
 #ifndef USING_LIST
+	cl.Queue_Max_Buffer = NULL;
+	cl.Stack_Max_Buffer = l_max_buf;
+	cl.List_Len = NULL;
 	cl.Queue_Push = NULL;
 	cl.Stack_Is_Empty = l_is_empty;
 	cl.Stack_Get_Error = l_geterror;
@@ -1599,12 +1796,14 @@ IfaceList stack()
 	cl.List_Search = NULL;
 	cl.List_Reverse = NULL;
 	cl.List_Print = NULL;
-	cl.List_Exec_Func = NULL;
+	cl.List_Exec_Sync = NULL;
 	cl.List_Clear = NULL;
 	cl.List_Get_Error = NULL;
 	cl.List_Filter = NULL;
 	cl.List_Map = NULL;
 #else
+	cl.Max_Buffer = l_max_buf;
+	cl.Len = NULL;
 	cl.Is_Empty = l_is_empty;
 	cl.Push = l_push;
 	cl.SPeek = l_peek;
@@ -1620,7 +1819,7 @@ IfaceList stack()
 	cl.Search = NULL;
 	cl.Reverse = NULL;
 	cl.Print = NULL;
-	cl.Exec_Func = NULL;
+	cl.Exec_Sync = NULL;
 	cl.Filter = NULL;
 	cl.Map = NULL;
 	cl.Exec_Async = NULL;
@@ -1628,14 +1827,21 @@ IfaceList stack()
 	return cl;
 }
 
-IfaceList queue(void)
+IfaceList queue(int buffer_size)
 {
-	init(&__list__);
+	init();
+	if(buffer_size != Buf_Disable){
+		limit_buf = true;
+		buffer = buffer_size;
+	}
 
 	IfaceList cl;
-	global_count = 0;
+	global_count[list_index] = 0;
 
 #ifndef USING_LIST
+	cl.Queue_Max_Buffer = l_max_buf;
+	cl.Stack_Max_Buffer = NULL;
+	cl.List_Len = NULL;
 	cl.Queue_Pop = l_qpop;
 	cl.Queue_Peek = l_qpeek;
 	cl.Queue_Push = l_push;
@@ -1654,13 +1860,15 @@ IfaceList queue(void)
 	cl.List_Search = NULL;
 	cl.List_Reverse = NULL;
 	cl.List_Print = NULL;
-	cl.List_Exec_Func = NULL;
+	cl.List_Exec_Sync = NULL;
 	cl.List_Clear = NULL;
 	cl.List_Get_Error = NULL;
 	cl.List_Filter = NULL;
 	cl.List_Map = NULL;
 	cl.List_Exec_Async = NULL;
 #else
+	cl.Max_Buffer = l_max_buf;
+	cl.Len = NULL;
 	cl.QPop = l_qpop;
 	cl.QPeek = l_qpeek;
 	cl.Is_Empty = l_is_empty;
@@ -1676,7 +1884,7 @@ IfaceList queue(void)
 	cl.Search = NULL;
 	cl.Reverse = NULL;
 	cl.Print = NULL;
-	cl.Exec_Func = NULL;
+	cl.Exec_Sync = NULL;
 	cl.Filter = NULL;
 	cl.Map = NULL;
 	cl.Exec_Async = NULL;
