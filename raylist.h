@@ -189,7 +189,7 @@ struct list {
 	struct list* 	next ;
 };
 
-typedef struct list List;
+typedef struct list __List;
 
 /*
  * 	SetObject macro used to change a list object level
@@ -213,7 +213,7 @@ static int list_index = 0;
 
 
 // Global list variable 
-RLLOCAL List* __list__[LIST_MAX];
+RLLOCAL __List* __list__[LIST_MAX];
 
 // global count for index
 RLLOCAL int global_count[LIST_MAX];
@@ -907,12 +907,12 @@ RLLOCAL void RLKill(RLAPIThread thread)
 }
 
 RLLOCAL void add_voidptr(
-		List** __list__ , 
+		__List** __list__ , 
 		void* val , 
 		Type t, 
 		int idx
 ){
-	List* temp = RLALLOC(sizeof(List));
+	__List* temp = RLALLOC(sizeof(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -925,12 +925,12 @@ RLLOCAL void add_voidptr(
 	*__list__ = temp;                      
 }
 RLLOCAL void add_int(
-		List** __list__ , 
+		__List** __list__ , 
 		int val , 
 		Type t, 
 		int idx
 ){
-	List* temp = RLALLOC(sizeof(List));
+	__List* temp = RLALLOC(sizeof(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -945,12 +945,12 @@ RLLOCAL void add_int(
 }
 
 RLLOCAL void add_char(
-		List** __list__ , 
+		__List** __list__ , 
 		char val , 
 		Type t, 
 		int idx
 ){
-	List* temp = RLALLOC(sizeof(List));
+	__List* temp = RLALLOC(sizeof(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -965,12 +965,12 @@ RLLOCAL void add_char(
 }
 
 RLLOCAL void add_float(
-		List** __list__ , 
+		__List** __list__ , 
 		float val , 
 		Type t, 
 		int idx
 ){
-	List* temp = RLALLOC(sizeof(List));
+	__List* temp = RLALLOC(sizeof(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -1004,8 +1004,8 @@ RLLOCAL LBOOL l_is_empty(void)
 }
 
 // the complexity still O(N) in worst case the index helps you to know the data u want to get later
-RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
-	List* local_list = *(__list__);
+RLLOCAL void local_l_insert(__List** __list__ , int idx , Type type , void* data){
+	__List* local_list = *(__list__);
 
 	if(idx < global_count[list_index] && idx >= 0){
 		while(local_list != NULL){
@@ -1013,7 +1013,7 @@ RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
 				local_list->index++;
 			}
 			if(idx == local_list->index){
-				List* node = RLALLOC(sizeof(List));
+				__List* node = RLALLOC(sizeof(__List));
 				if(node == NULL)
 				{
 					status = LIST_MEMALLOC;
@@ -1024,7 +1024,7 @@ RLLOCAL void local_l_insert(List** __list__ , int idx , Type type , void* data){
 				node->index = idx;
 
 				local_list->index++;
-				List* temp = local_list->next;
+				__List* temp = local_list->next;
 				local_list->next = node;
 				node->next = temp;
 				if(local_list->next != NULL)
@@ -1053,19 +1053,21 @@ RLLOCAL int l_len(){
 
 RLLOCAL void* l_qpeek(void)
 {
-	List* temp = __list__[list_index];
+	__List* temp = __list__[list_index];
 	while(temp->next != NULL)	temp = temp->next;
 	return temp->data;
 }
 
-RLLOCAL void* local_l_qpop(List** __list__){
+RLLOCAL void* local_l_qpop(__List** __list__){
 	void* d;
-	if(*__list__ == NULL)	return NULL;
-	List* ___temp = *__list__;
+	if(*__list__ == NULL){
+		return NULL;
+	}
+	__List* ___temp = *__list__;
 	if((___temp)->next == NULL){
 		d = ___temp->data;
 		RLFREE(___temp);
-		___temp = NULL;
+		*__list__ = NULL;
 		global_count[list_index]--;
 		return d;
 	}
@@ -1081,9 +1083,9 @@ RLLOCAL void* l_qpop(){
 	return local_l_qpop(&__list__[list_index]);
 }
 
-RLLOCAL void* local_l_pop(List** __list__){
+RLLOCAL void* local_l_pop(__List** __list__){
 	void* ret;
-	List* temp = *__list__;
+	__List* temp = *__list__;
 	if(temp == NULL)	return NULL;
 	ret = temp->data;
 	*__list__ = (*__list__)->next;
@@ -1154,8 +1156,8 @@ RLLOCAL void l_push(
 
 RLLOCAL void l_clear(){
 	for(int x = 0 ; x < list_index ; x++){
-		List* current = __list__[x];
-		List* temp;
+		__List* current = __list__[x];
+		__List* temp;
 		while (current != NULL) {
 			temp = current->next; 
 			RLFREE(current);        
@@ -1165,7 +1167,7 @@ RLLOCAL void l_clear(){
 	init();
 	revesed = false;
 }
-RLLOCAL void* local_exec(List* __list__ ,int idx , void* data , Exec_Flag flag)
+RLLOCAL void* local_exec(__List* __list__ ,int idx , void* data , Exec_Flag flag)
 {
 	if(idx > global_count[list_index]){	
 		status = LIST_INDEX_OUT_OF_RANGE;
@@ -1366,7 +1368,7 @@ RLLOCAL void* exec(int idx , void* data , Exec_Flag flag){
 }
 
 RLLOCAL void local_l_popidx(
-		List** __list__,
+		__List** __list__,
 		int idx
 		)
 {
@@ -1380,8 +1382,8 @@ RLLOCAL void local_l_popidx(
 		return;
 	}
 	status = FINE;
-	List* ___temp = *__list__;
-	List* prev = NULL;
+	__List* ___temp = *__list__;
+	__List* prev = NULL;
 	if (___temp != NULL && ___temp->index == idx) {
 	    *__list__ = ___temp->next;
 	    RLFREE(___temp);
@@ -1417,7 +1419,7 @@ RLLOCAL void l_delete(int idx)
 }
 
 RLLOCAL void l_filter(FILTERCALLBACK callback , Type type , Filter_Flag flag){
-	List* ___temp = __list__[list_index];
+	__List* ___temp = __list__[list_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
 			if(!callback(___temp->data)){
@@ -1431,7 +1433,7 @@ RLLOCAL void l_filter(FILTERCALLBACK callback , Type type , Filter_Flag flag){
 }
 
 RLLOCAL void l_map(MAPCALLBACK callback , Type type){
-	List* ___temp = __list__[list_index];
+	__List* ___temp = __list__[list_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
 			___temp->data = callback(___temp->data);
@@ -1449,7 +1451,7 @@ RLLOCAL void kill(RLAPIThread thread)
 }
 
 RLLOCAL IfaceThread exec_async(int idx , RLAPIParam data){
-	List* ___temp = __list__[list_index];
+	__List* ___temp = __list__[list_index];
 
 	IfaceThread th = {0};
 
@@ -1492,7 +1494,7 @@ RLLOCAL string l_geterror()
 	}
 }
 
-RLLOCAL void* local_l_get(List* __list__ , int idx)
+RLLOCAL void* local_l_get(__List* __list__ , int idx)
 {
 	if(__list__ == NULL){
 		status = LIST_EMPTY;
@@ -1502,7 +1504,7 @@ RLLOCAL void* local_l_get(List* __list__ , int idx)
 		status = LIST_INDEX_OUT_OF_RANGE;
 		return NULL;
 	}
-	List* local_list = __list__;
+	__List* local_list = __list__;
 	status = FINE;
 	while(local_list != NULL){
 		if((local_list)->index == idx){	
@@ -1518,13 +1520,13 @@ RLLOCAL void* l_get(int idx){
 	return local_l_get(__list__[list_index] , idx);
 }
 RLLOCAL LBOOL local_l_search(
-		List* __list__,
+		__List* __list__,
 		int* idx ,
 		Type type ,
 		void* data
 )
 {
-	List* ___temp = __list__;
+	__List* ___temp = __list__;
 	if(___temp == NULL){
 		status = LIST_EMPTY;
 		return false;
@@ -1578,16 +1580,16 @@ RLLOCAL LBOOL l_search(
 {
 	return local_l_search(__list__[list_index] , idx , type , data);
 }
-RLLOCAL void local_l_reverse(List** __list__)
+RLLOCAL void local_l_reverse(__List** __list__)
 {
 	if((*__list__) == NULL){
 		status = LIST_EMPTY;
 		return;
 	}
 	status = FINE;
-	List* prev = NULL; 
-	List* current = *__list__; 
-	List* next = NULL; 
+	__List* prev = NULL; 
+	__List* current = *__list__; 
+	__List* next = NULL; 
 	while (current != NULL) { 
 	    next = current->next; 
 	    current->next = prev; 
@@ -1607,7 +1609,7 @@ void l_print()
 		status = LIST_EMPTY;
 		return ;
 	}
-	List* local_list = __list__[list_index];
+	__List* local_list = __list__[list_index];
 	status = FINE;
 	//local_l_reverse(&local_list);
 	printf("[\n");
@@ -1653,7 +1655,7 @@ void l_print()
 	printf("\n]\n");
 }
 
-IfaceList list(int count , ...)
+IfaceList List(int count , ...)
 {
 	init();
 	va_list args;
@@ -1764,7 +1766,7 @@ IfaceList list(int count , ...)
 	return cl;
 }
 
-IfaceList stack(int buffer_size)
+IfaceList Stack(int buffer_size)
 {
 	init();
 	if(buffer_size != Buf_Disable){
@@ -1827,7 +1829,7 @@ IfaceList stack(int buffer_size)
 	return cl;
 }
 
-IfaceList queue(int buffer_size)
+IfaceList Queue(int buffer_size)
 {
 	init();
 	if(buffer_size != Buf_Disable){
