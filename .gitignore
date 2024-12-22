@@ -3,3 +3,5 @@ test
 temp
 test.c
 example
+examples/Async/main
+examples/dictionary/dictionary
