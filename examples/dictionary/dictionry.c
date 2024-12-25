@@ -1,6 +1,5 @@
-
 /*
- *	RayList v2.1.0 Example file
+ *	RayList v2.2.0 Example file
  *
  *	a simple Dictionary using raylist
  *
@@ -22,7 +21,7 @@ typedef struct {
 
 int main(void){
 	// initialize our list
-	IfaceList dict = list(0);
+	RLList dict = List(0);
 
 	// fill Dictionary struct
 	Dictionary dict1 = {

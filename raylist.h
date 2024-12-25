@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2024 Ray Den	raylist v2.1.0				*
+*			Copyright (c) 2024 Ray Den	raylist v2.2.0				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -27,6 +27,7 @@
 #if !defined(LIST_H) || !defined(LIST_INCLUDED)
 #define LIST_H
 #define LIST_INCLUDED 
+
 // to check if raylist is included
 
 // 	typeof pragma returns string contained type of variable
@@ -182,6 +183,7 @@ typedef string 	(*STRINGFUNCTION 	)(void*);
  *		data  : the place we store the address of our variables 
  *		next  : pointing to next list
  * */
+
 struct list {
 	int 		index;
 	Type 		type ;
@@ -191,6 +193,15 @@ struct list {
 
 typedef struct list __List;
 
+#ifndef LIST_MAX
+#define LIST_MAX 10
+#endif
+static int list_index = 0;
+
+// RLDefer is defer function call atexit from stdlib to call function before quit the program
+// it does'n work if you press CTRL-C
+#define RLDefer		atexit	
+
 /*
  * 	SetObject macro used to change a list object level
  *	IfaceList l = list(0);
@@ -199,13 +210,7 @@ typedef struct list __List;
  *	start from 1
  *	if the number was 2 it will access p object
  * */
-
-#ifndef LIST_MAX
-#define LIST_MAX 10
-#endif
-static int list_index = 0;
-
-#define SetObject(x)								\
+#define RLSetObject(x)								\
 	do{									\
 		if(!strcmp(typeof(x) , "int") && x < LIST_MAX && x > 0)		\
 			list_index = x - 1;					\
@@ -288,118 +293,10 @@ RLLOCAL LBOOL limit_buf	= false;
 
 typedef interface {
 #ifndef USING_LIST
-
-	/*
-	 *	Queue_Max_Buffer() return true if buffer equal to fixed buffer else false
-	 * */
-	LBOOL (*Queue_Max_Buffer)(void);
-
-	/*
-	 *	Stack_Max_Buffer() return true if buffer equal to fixed buffer else false
-	 * */
-
-	LBOOL (*Stack_Max_Buffer)(void);
-
-	/*
-	 *	return true if stack is empty else false
-	 * */
-
-	LBOOL (*Queue_Is_Empty)(
-			void
-	);
-	/*
-	 *  return String if the error is set true (status > 0)
-	 * */ 
-	string (*Queue_Get_Error)(
-			void
-	);
-	/*
-	 *	Queue_Push function will take the data and stored to the __list__ global variable 
-	 *
-	 * 	Queue_Push(
-	 *		Type : the data type
-	 *		void*: data pointer point address of stored data
-	 * 	)
-	 *	
-	 *	NOTE : the append method works like push in stack algorithm
-	 *
-	 *	Example :
-	 *		my_list.Queue_Push(RL_STR , "Hello World");
-	 *
-	 * */
-	void (*Queue_Push)(
-			Type type,
-			void* data
-	);
-	/*
-	 *	Peek function return last value of the Queue (Queue)
-	 *	Example : 
-	 *		void* value = my_list.Queue_Peek();
-	 * */
-	void* (*Queue_Peek)(void);
-	/*
-	 *	Queue_Pop function will pop the last value from the list
-	 *
-	 *	Example : 
-	 *		void* value = my_list.Queue_Pop();
-	 * */
-	void* (*Queue_Pop)(void);
-	// clear Queue
-	void (*Queue_Clear)(
-			void
-	);
-
 	/*
 	 *	return true if list is empty else false
 	 * */
 	LBOOL (*List_Is_Empty)(
-			void
-	);
-	/*
-	 *	return true if stack is empty else false
-	 * */
-	LBOOL (*Stack_Is_Empty)(
-			void
-	);
-	/*
-	 *  return String if the error is set true (status > 0)
-	 * */ 
-	string (*Stack_Get_Error)(
-			void
-	);
-	/*
-	 *	Stack_Push function will take the data and stored to the __list__ global variable 
-	 *
-	 * 	Stack_Push(
-	 *		Type : the data type
-	 *		void*: data pointer point address of stored data
-	 * 	)
-	 *	
-	 *	NOTE : the append method works like push in stack algorithm
-	 *
-	 *	Example :
-	 *		my_list.Stack_Push(RL_STR , "Hello World");
-	 *
-	 * */
-	void (*Stack_Push)(
-			Type type,
-			void* data
-	);
-	/*
-	 *	Peek function return last value of the Stack (Stack)
-	 *	Example : 
-	 *		void* value = my_list.Stack_Peek();
-	 * */
-	void* (*Stack_Peek)(void);
-	/*
-	 *	Stack_Pop function will pop the last value from the list
-	 *
-	 *	Example : 
-	 *		void* value = my_list.Stack_Pop();
-	 * */
-	void* (*Stack_Pop)(void);
-	// clear Stack
-	void (*Stack_Clear)(
 			void
 	);
 	/*
@@ -591,61 +488,6 @@ typedef interface {
 	int (*List_Len)(void);
 #else
 	/*
-	 *	Max_Buffer() return true if buffer equal to fixed buffer else false
-	 * */
-	LBOOL (*Max_Buffer)(void);
-
-	/*
-	 *	return true if list is empty else false
-	 * */
-	LBOOL (*Is_Empty)(
-			void
-	);
-	/*
-	 *	Push function will take the data and stored to the __list__ global variable 
-	 *
-	 * 	Push(
-	 *		Type : the data type
-	 *		void*: data pointer point address of stored data
-	 * 	)
-	 *	
-	 *	NOTE : the append method works like push in stack algorithm
-	 *
-	 *	Example :
-	 *		my_list.Push(RL_STR , "Hello World");
-	 *
-	 * */
-	void (*Push)(
-			Type type,
-			void* data
-	);
-	/*
-	 *	QPeek function return first value of the List (Queue)
-	 *	Example : 
-	 *		void* value = my_list.QPeek();
-	 * */
-	void* (*QPeek)(void);
-	/*
-	 *	QPop function will pop the first value from the list
-	 *
-	 *	Example : 
-	 *		void* value = my_list.QPop();
-	 * */
-	void* (*QPop)(void);
-	/*
-	 *	SPeek function return last value of the List (Stack)
-	 *	Example : 
-	 *		void* value = my_list.SPeek();
-	 * */
-	void* (*SPeek)(void);
-	/*
-	 *	SPop function will pop the last value from the list
-	 *
-	 *	Example : 
-	 *		void* value = my_list.SPop();
-	 * */
-	void* (*SPop)(void);
-	/*
 	 *	Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
 	 *	Insert(
@@ -828,17 +670,76 @@ typedef interface {
 	 * */
 	int (*Len)(void);
 #endif
-}IfaceList;
+}RLList;
+
+// RLCollections interface 
+// contains all method , push pop and more for stack and queue data structure
+typedef interface {
+	/*
+	 *	Max_Buffer() return true if buffer equal to fixed buffer else false
+	 * */
+
+	LBOOL (*Max_Buffer)(void);
+
+	/*
+	 *	return true if stack is empty else false
+	 * */
+	LBOOL (*Is_Empty)(
+			void
+	);
+	/*
+	 *  return String if the error is set true (status > 0)
+	 * */ 
+	string (*Get_Error)(
+			void
+	);
+	/*
+	 *	Push function will take the data and stored to the __list__ global variable 
+	 *
+	 * 	Push(
+	 *		Type : the data type
+	 *		void*: data pointer point address of stored data
+	 * 	)
+	 *	
+	 *	NOTE : the append method works like push in stack algorithm
+	 *
+	 *	Example :
+	 *		my_list.Push(RL_STR , "Hello World");
+	 *
+	 * */
+	void (*Push)(
+			Type type,
+			void* data
+	);
+	/*
+	 *	Peek function return last value of the Stack (Stack)
+	 *	Example : 
+	 *		void* value = my_list.Stack_Peek();
+	 * */
+	void* (*Peek)(void);
+	/*
+	 *	Stack_Pop function will pop the last value from the list
+	 *
+	 *	Example : 
+	 *		void* value = my_list.Stack_Pop();
+	 * */
+	void* (*Pop)(void);
+	// clear Stack
+	void (*Clear)(
+			void
+	);
+
+}RLCollections;
 
 
-IfaceList list(
+RLList List(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
 
-IfaceList stack(int buffer_size);
+RLCollections Stack(int buffer_size);
 
-IfaceList queue(int buffer_size);
+RLCollections Queue(int buffer_size);
 
 #endif
 
@@ -1154,7 +1055,7 @@ RLLOCAL void l_push(
 	}
 }
 
-RLLOCAL void l_clear(){
+RLLOCAL void l_clear(void){
 	for(int x = 0 ; x < list_index ; x++){
 		__List* current = __list__[x];
 		__List* temp;
@@ -1655,13 +1556,13 @@ void l_print()
 	printf("\n]\n");
 }
 
-IfaceList List(int count , ...)
+RLList List(int count , ...)
 {
 	init();
 	va_list args;
 	va_start(args , count);
 
-	IfaceList cl;
+	RLList cl;
 	global_count[list_index] = count;
 	int c = 0;
 	while(c < count){
@@ -1715,16 +1616,6 @@ IfaceList List(int count , ...)
 	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
-	cl.Queue_Max_Buffer = NULL;
-	cl.Stack_Max_Buffer = NULL;
-	cl.Queue_Push = NULL;
-	cl.Stack_Is_Empty = NULL;
-	cl.Stack_Get_Error = NULL;
-	cl.Stack_Push = NULL;
-	cl.Stack_Peek = NULL;
-	cl.Stack_Pop = NULL;
-	cl.Queue_Peek = NULL;
-	cl.Queue_Pop = NULL;
 	cl.List_Is_Empty = l_is_empty;
 	cl.List_Insert = l_insert;
 	cl.List_Append = l_append;
@@ -1741,19 +1632,12 @@ IfaceList List(int count , ...)
 	cl.List_Exec_Async = exec_async;
 	cl.List_Len = l_len;
 #else
-	cl.Max_Buffer = NULL;
-	cl.Push = NULL;
-	cl.SPeek = NULL;
-	cl.SPop = NULL;
-	cl.QPeek = NULL;
-	cl.QPop = NULL;
 	cl.Insert = l_insert;
 	cl.Append = l_append;
 	cl.Del_Index = l_delete;
 	cl.Get = l_get;
 	cl.Search = l_search;
 	cl.Reverse = l_reverse;
-	cl.Is_Empty = l_is_empty;
 	cl.Print = l_print;
 	cl.Exec_Sync = exec;
 	cl.Clear = l_clear;
@@ -1766,7 +1650,7 @@ IfaceList List(int count , ...)
 	return cl;
 }
 
-IfaceList Stack(int buffer_size)
+RLCollections Stack(int buffer_size)
 {
 	init();
 	if(buffer_size != Buf_Disable){
@@ -1774,62 +1658,21 @@ IfaceList Stack(int buffer_size)
 		buffer = buffer_size;
 	}
 
-	IfaceList cl;
+	RLCollections cl;
 	global_count[list_index] = 0;
 
-#ifndef USING_LIST
-	cl.Queue_Max_Buffer = NULL;
-	cl.Stack_Max_Buffer = l_max_buf;
-	cl.List_Len = NULL;
-	cl.Queue_Push = NULL;
-	cl.Stack_Is_Empty = l_is_empty;
-	cl.Stack_Get_Error = l_geterror;
-	cl.Stack_Push = l_push;
-	cl.Stack_Peek = l_peek;
-	cl.Stack_Pop = l_pop;
-	cl.Stack_Clear = l_clear;
-	cl.List_Exec_Async = NULL;
-	cl.Queue_Peek = NULL;
-	cl.Queue_Pop = NULL;
-	cl.List_Insert = NULL;
-	cl.List_Append = NULL;
-	cl.List_Del_Index = NULL;
-	cl.List_Get = NULL;
-	cl.List_Search = NULL;
-	cl.List_Reverse = NULL;
-	cl.List_Print = NULL;
-	cl.List_Exec_Sync = NULL;
-	cl.List_Clear = NULL;
-	cl.List_Get_Error = NULL;
-	cl.List_Filter = NULL;
-	cl.List_Map = NULL;
-#else
 	cl.Max_Buffer = l_max_buf;
-	cl.Len = NULL;
 	cl.Is_Empty = l_is_empty;
 	cl.Push = l_push;
-	cl.SPeek = l_peek;
-	cl.SPop = l_pop;
 	cl.Clear = l_clear;
-	cl.QPeek = NULL;
-	cl.QPop = NULL;
+	cl.Peek = l_peek;
+	cl.Pop = l_pop;
 	cl.Get_Error = l_geterror;
-	cl.Insert = NULL;
-	cl.Append = NULL;
-	cl.Del_Index = NULL;
-	cl.Get = NULL;
-	cl.Search = NULL;
-	cl.Reverse = NULL;
-	cl.Print = NULL;
-	cl.Exec_Sync = NULL;
-	cl.Filter = NULL;
-	cl.Map = NULL;
-	cl.Exec_Async = NULL;
-#endif
+
 	return cl;
 }
 
-IfaceList Queue(int buffer_size)
+RLCollections Queue(int buffer_size)
 {
 	init();
 	if(buffer_size != Buf_Disable){
@@ -1837,60 +1680,17 @@ IfaceList Queue(int buffer_size)
 		buffer = buffer_size;
 	}
 
-	IfaceList cl;
+	RLCollections cl;
 	global_count[list_index] = 0;
 
-#ifndef USING_LIST
-	cl.Queue_Max_Buffer = l_max_buf;
-	cl.Stack_Max_Buffer = NULL;
-	cl.List_Len = NULL;
-	cl.Queue_Pop = l_qpop;
-	cl.Queue_Peek = l_qpeek;
-	cl.Queue_Push = l_push;
-	cl.Queue_Get_Error = l_geterror;
-	cl.Queue_Is_Empty = l_is_empty;
-	cl.Queue_Clear = l_clear;
-	cl.Stack_Is_Empty = NULL;
-	cl.Stack_Get_Error = NULL;
-	cl.Stack_Push = NULL;
-	cl.Stack_Peek = NULL;
-	cl.Stack_Pop = NULL;
-	cl.List_Insert = NULL;
-	cl.List_Append = NULL;
-	cl.List_Del_Index = NULL;
-	cl.List_Get = NULL;
-	cl.List_Search = NULL;
-	cl.List_Reverse = NULL;
-	cl.List_Print = NULL;
-	cl.List_Exec_Sync = NULL;
-	cl.List_Clear = NULL;
-	cl.List_Get_Error = NULL;
-	cl.List_Filter = NULL;
-	cl.List_Map = NULL;
-	cl.List_Exec_Async = NULL;
-#else
 	cl.Max_Buffer = l_max_buf;
-	cl.Len = NULL;
-	cl.QPop = l_qpop;
-	cl.QPeek = l_qpeek;
+	cl.Pop = l_qpop;
+	cl.Peek = l_qpeek;
 	cl.Is_Empty = l_is_empty;
 	cl.Push = l_push;
 	cl.Clear = l_clear;
-	cl.SPeek = NULL;
-	cl.SPop = NULL;
 	cl.Get_Error = l_geterror;
-	cl.Insert = NULL;
-	cl.Append = NULL;
-	cl.Del_Index = NULL;
-	cl.Get = NULL;
-	cl.Search = NULL;
-	cl.Reverse = NULL;
-	cl.Print = NULL;
-	cl.Exec_Sync = NULL;
-	cl.Filter = NULL;
-	cl.Map = NULL;
-	cl.Exec_Async = NULL;
-#endif
+
 	return cl;
 }
 
