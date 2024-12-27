@@ -10,76 +10,12 @@
 #define LIST_C
 #include "../../raylist.h"
 
-// this structure used to handle return data
-// it contains bool isfinished to check if the task finish
-// and bool is error to handle error
-// return_data to work with
-typedef struct {
-	bool 	isfinished;
-	bool 	iserror;
-	void* 	return_data;
-}HandlPromise;
+#define FUTURE_C
+#include "future.h"
 
-// define function type for target function
-typedef HandlPromise 	(*Poll)(void*);
-// this callback function called in PromiseLoop to work with return_data
-typedef void 		(*DoWorkInPromiseLoop)(void*);
-
-// unit task
-typedef struct Promise {
-	// Abstract method , should be implemented
-	Poll poll;
-	// the data
-	void* data;
-}Promise;
-
-
-// executable function
-//  |	   	|							      |	          |
-//  |      	|                                                             |	          |
-//  |  		| => exec func1 (count ++ ,                                   |           |
-//  | 	        |			exit ,                                |           |
-//  |  func2    |			function not finish , pushed back)    |  func1    |
-//  |  func1    |                                                             |  func2    |
-//  |___________|                                                      	      |___________|
-
-Promise* PromiseNewTask(Poll poll , void* data){
-	Promise* promise = malloc(sizeof(Promise));
-	promise->poll = poll;
-	promise->data = data;
-	return promise;
-}
-
-void PromiseLoop(RLCollections queue , DoWorkInPromiseLoop callback) {
-	// while queue is not empty
-	while (!queue.Is_Empty()) {
-		// pop the unit task
-		Promise* curr = (Promise*)queue.Pop();
-
-		HandlPromise handle = curr->poll((void*)curr);
-		// call function and check if function finished or not
-		if (!handle.isfinished) {
-			// function is not finished 
-			// we pushed back to the queue
-			if(callback != NULL){
-				// handle the data with callback function
-				callback(handle.return_data);
-			}
-			if(handle.iserror){
-				// check errno or log error
-			}
-			queue.Push(RL_VOIDPTR , curr);
-		} else {
-			// function is done 
-			// free the allocated data curr and skip
-			free(curr);
-		}
-	}
-}
-
-//////////////////////////
+////////////////////////////////
 /// Example stoled from copilot
-/////////////////////////
+////////////////////////////////
 
 typedef struct {
     int count;
@@ -87,17 +23,17 @@ typedef struct {
 } CounterData;
 
 // implementation of abstract method poll
-// NOTE : poll function should return HandlPromise structure
-HandlPromise counter_task_execute(void* task) {
+// NOTE : poll function should return HandlFuture structure
+HandlFuture task_poll(void* task) {
 	// getting the data from task
-	CounterData* data = (CounterData*)((Promise*)task)->data;
+	CounterData* data = (CounterData*)((Future*)task)->data;
 
 	// check if count is less than count_max
 	if (data->count < data->max_count) {
 		// do work (count++)
         	data->count++;
 		// return NULL (function is not finished yet)
-		return (HandlPromise){
+		return (HandlFuture){
 			.isfinished = false,
 			.iserror = false,
 			.return_data = (void*)&data->count
@@ -106,7 +42,7 @@ HandlPromise counter_task_execute(void* task) {
 	// free allocated data memory
 	free(data);
 	// return task (task is not NULL so function is done)
-	return (HandlPromise){
+	return (HandlFuture){
 		.isfinished = true,
 		.iserror = false,
 		.return_data = NULL
@@ -114,8 +50,14 @@ HandlPromise counter_task_execute(void* task) {
 }
 
 // for handle the return data
-void printvalue(void* data){
+void* printvalue(void* data , int task){
+	// if the function executed in task 3
+	if(task == 2){
+		if(*(int*)data >= 1000)
+			*(int*)data += 5;
+	}
 	printf("Debug :: %d\n" , *(int*)data);
+	return data;
 }
 
 int main(void)
@@ -123,7 +65,7 @@ int main(void)
 	/// init our object this queue has no limit buffer 
 	RLCollections queue = Queue(Buf_Disable);
 
-	// allocate data1 and data2
+	// allocate the data
 	CounterData* data1 = malloc(sizeof(CounterData));
 	data1->count = 0;
 	data1->max_count = 100;
@@ -132,19 +74,36 @@ int main(void)
 	data2->count = 200;
 	data2->max_count = 400;
 
-	// allocate tasks 1 and 2
-	Promise* task1 = PromiseNewTask(counter_task_execute,data1);
-	//task1->poll = counter_task_execute;
-	//task1->data = data1;
+	CounterData* data3 = malloc(sizeof(CounterData));
+	data3->count = 1000;
+	data3->max_count = 1200;
 
-	Promise* task2 = PromiseNewTask(counter_task_execute,data2);
-	//task2->poll = counter_task_execute;
-	//task2->data = data2;
+	CounterData* data4 = malloc(sizeof(CounterData));
+	data4->count = 10000;
+	data4->max_count = 12000;
+
+	CounterData* data5 = malloc(sizeof(CounterData));
+	data5->count = -50;
+	data5->max_count = 50;
+
+	// allocate 5 tasks
+	Future* task1 = FutureNewTask(task_poll,data1);
+
+	Future* task2 = FutureNewTask(task_poll,data2);
+
+	Future* task3 = FutureNewTask(task_poll,data3);
+
+	Future* task4 = FutureNewTask(task_poll,data4);
+
+	Future* task5 = FutureNewTask(task_poll,data5);
 
 	// push tasks to the queue
 	queue.Push(RL_VOIDPTR , task1);
 	queue.Push(RL_VOIDPTR , task2);
+	queue.Push(RL_VOIDPTR , task3);
+	queue.Push(RL_VOIDPTR , task4);
+	queue.Push(RL_VOIDPTR , task5);
 
 	// execute tasks
-	PromiseLoop(queue , printvalue);
+	FutureLoop(queue , printvalue);
 }
