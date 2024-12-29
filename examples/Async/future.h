@@ -38,6 +38,17 @@ typedef interface Future {
 
 static int task_count = 0;
 
+// lambda call back function in C
+// i see this macro is usefull because sometimes you need to implement function directly 
+// if you got problem use --std=gnu99 flag when you compile your program
+
+#define lambda(lambda$_ret, lambda$_args, lambda$_body)		\
+	({							\
+	lambda$_ret lambda$__anon$ lambda$_args			\
+	lambda$_body						\
+	&lambda$__anon$;					\
+	})
+
 #endif //FUTURE_H
 
 #ifdef FUTURE_C

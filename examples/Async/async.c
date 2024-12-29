@@ -13,10 +13,6 @@
 #define FUTURE_C
 #include "future.h"
 
-////////////////////////////////
-/// Example stoled from copilot
-////////////////////////////////
-
 typedef struct {
     int count;
     int max_count;
@@ -50,15 +46,15 @@ HandlFuture task_poll(void* task) {
 }
 
 // for handle the return data
-void* printvalue(void* data , int task){
-	// if the function executed in task 3
-	if(task == 2){
-		if(*(int*)data >= 1000)
-			*(int*)data += 5;
-	}
-	printf("Debug :: %d\n" , *(int*)data);
-	return data;
-}
+//void* printvalue(void* data , int task){
+//	// if the function executed in task 3
+//	if(task == 2){
+//		if(*(int*)data >= 1000)
+//			*(int*)data += 5;
+//	}
+//	printf("Debug :: %d\n" , *(int*)data);
+//	return data;
+//}
 
 int main(void)
 {
@@ -105,5 +101,16 @@ int main(void)
 	queue.Push(RL_VOIDPTR , task5);
 
 	// execute tasks
-	FutureLoop(queue , printvalue);
+	//FutureLoop(queue , printvalue);
+
+	// testing lambda
+	FutureLoop(queue , lambda(void* , (void* data , int task) , {
+		// if the function executed in task 3
+		if(task == 2){
+			if(*(int*)data >= 1000)
+				*(int*)data += 5;
+		}
+		printf("Debug :: %d\n" , *(int*)data);
+		return data;
+	}));
 }
