@@ -1,5 +1,5 @@
 /************************************************************************************************
-*			Copyright (c) 2024 Ray Den	raylist v2.2.0				*
+*			Copyright (c) 2024 Ray Den	raylist v2.3.0				*
 *												*
 *	Permission is hereby granted, free of charge, to any person obtaining a copy		*
 *	of this software and associated documentation files (the "Software"), to deal		*
@@ -20,9 +20,6 @@
 *	THE SOFTWARE.										*
 *												*
  ************************************************************************************************/
-
-// TODO : add thread	function 
-// TODO : add thread	type
 
 #if !defined(LIST_H) || !defined(LIST_INCLUDED)
 #define LIST_H
@@ -83,10 +80,16 @@ RLLOCAL LBOOL revesed = false;
 #include <stdlib.h>
 #endif
 
+#if !defined(_STRING_H)
+#include <string.h>
+#endif
+
+
 /*
  *	if not defined RLALLOC the developer not using other allocation memory style
  *	so we used the defualt 
  * */
+
 
 #ifndef RLALLOC
 #define RLALLOC	malloc
@@ -102,6 +105,10 @@ RLLOCAL LBOOL revesed = false;
 
 #ifndef RLUNUSED
 #define RLUNUSED(x) (void)x
+#endif
+
+#ifndef RLMEMCPY
+#define RLMEMCPY	memcpy
 #endif
 
 /*
@@ -214,7 +221,33 @@ static int list_index = 0;
 	do{									\
 		if(!strcmp(typeof(x) , "int") && x < LIST_MAX && x > 0)		\
 			list_index = x - 1;					\
-	}while(0)								\
+	}while(0)								
+
+
+
+//    RLCopyObject(size) macro enabled copy value without point to address of the variable
+//    this macro is usefull when you try to append struct to your list 
+//    and use type RL_VOIDPTR or repeated variable
+//    RLDisableCopyObject() do disable it
+//
+//    Example : 
+//    	... // list is already init
+//    	RLCopyObject(sizeof(struct MyStruct));
+//    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);	// append more data with same size
+//    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
+//    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
+//    	RLDisableCopyObject();
+
+RLLOCAL LBOOL enable_copy = false;
+RLLOCAL size_t copy_size = 0;
+#define RLCopyObject(size)					\
+	enable_copy = true;					\
+	if((size) < 0)	copy_size = (size) * -1;		\
+	else		copy_size = (size);
+
+#define RLDisableCopyObject()					\
+	enable_copy = false;					\
+	copy_size = 0;						
 
 
 // Global list variable 
@@ -819,7 +852,12 @@ RLLOCAL void add_voidptr(
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = val;  
+	if(!enable_copy)
+		temp->data = val;  
+	else {
+		temp->data = RLALLOC(copy_size + 1);
+		RLMEMCPY(temp->data , val , copy_size + 1);
+	}
 	temp->type = t;                 
 	temp->index = idx;              
 	temp->next = *__list__;                
