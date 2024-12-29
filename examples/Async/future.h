@@ -1,5 +1,6 @@
 /*
  *	future lib is under raylist licence by abdorayden (RayDen)
+ *	this lib is under raylist v2.3.0 LICENSE 
  * */
 
 #ifndef FUTURE_H

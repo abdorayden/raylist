@@ -1,5 +1,5 @@
 /*
- *	RayList v2.2.0 Example file
+ *	RayList v2.3.0 Example file
  *
  *	a simple Dictionary using raylist
  *
