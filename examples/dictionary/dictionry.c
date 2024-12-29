@@ -21,37 +21,41 @@ typedef struct {
 
 int main(void){
 	// initialize our list
-	RLList dict = List(0);
+	RLList list_dict = List(0);
 
+	// enable copy object
+	// the append function will create copy of the object and added to the list
+	RLCopyObject(sizeof(Dictionary));
 	// fill Dictionary struct
-	Dictionary dict1 = {
+	Dictionary dict = {
 		0,
 		"rayden"
 	};
-	Dictionary dict2 = {
+	// append variable struct to a list
+	list_dict.Append(RL_VOIDPTR , (void*)&dict);
+	dict = (Dictionary){
 		1,
 		"foo"
 	};
-	Dictionary dict3 = {
+	list_dict.Append(RL_VOIDPTR , (void*)&dict);
+	dict = (Dictionary){
 		2,
 		"bar"
 	};
-	Dictionary dict4 = {
+	list_dict.Append(RL_VOIDPTR , (void*)&dict);
+	dict = (Dictionary){
 		3,
 		"baz"
 	};
-	// append variable struct to a list
-	dict.Append(RL_VOIDPTR , (void*)&dict1);
-	dict.Append(RL_VOIDPTR , (void*)&dict2);
-	dict.Append(RL_VOIDPTR , (void*)&dict3);
-	dict.Append(RL_VOIDPTR , (void*)&dict4);
+	list_dict.Append(RL_VOIDPTR , (void*)&dict);
+	RLDisableCopyObject();
 
 	// print Dictionary
-	for(int i = 0 ; i < dict.Len() ; i++){
-		Dictionary t = *(Dictionary*)dict.Get(i);
+	for(int i = 0 ; i < list_dict.Len() ; i++){
+		Dictionary t = *(Dictionary*)list_dict.Get(i);
 		printf("%d => %s\n" , t.key , t.value);
 	}
 	// clear memory
-	dict.Clear();
+	list_dict.Clear();
 	return 0;
 }
