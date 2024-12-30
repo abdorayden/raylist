@@ -85,6 +85,7 @@ int main(){
 	int* appendlist = malloc(sizeof(int)*3);
 	appendlist[idx++] = rand() % 100;
 	RLCollections queue = Queue(Buf_Disable);
+	RLDefer(queue.Clear);
 
 	Future* add_task = FutureNewTask(random_poll , appendlist);
 	Future* sum_task = FutureNewTask(sum_poll    , appendlist);
