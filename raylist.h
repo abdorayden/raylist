@@ -207,6 +207,7 @@ static int list_index = 0;
 
 // RLDefer is defer function call atexit from stdlib to call function before quit the program
 // it does'n work if you press CTRL-C
+// TODO : handle CTRL-C to frees allocated list
 #define RLDefer		atexit	
 
 /*
