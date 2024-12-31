@@ -18,19 +18,25 @@
 #define FUTURE_C
 #include "future.h"
 
+// init how many operation can do
 #define END	10
 int i = 0;
-int idx = 0; 
 #define ARRAY_SIZE(x)	(sizeof(x)/sizeof(x[0]))
 
+typedef struct {
+	int* appendlist;
+	int idx;
+}SumRandom;
+
+// implement poll abstract method
 HandlFuture random_poll(void* task){
-	int* datadd = (int*)((Future*)task)->data;
+	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
 	if(i < END){
 		i++;
-		datadd[idx++] = rand() % 100;
+		datadd->appendlist[datadd->idx++] = rand() % 100;
 		// DEBUGGING
-		for(int x = 0; x < ARRAY_SIZE(datadd) ; x++)
-			printf("datadd : %d\n" , datadd[x]);
+		for(int x = 0; x < ARRAY_SIZE(datadd->appendlist) ; x++)
+			printf("datadd : %d\n" , datadd->appendlist[x]);
 
 		puts("-----------------");
 		return (HandlFuture){
@@ -46,18 +52,19 @@ HandlFuture random_poll(void* task){
 	};
 }
 
+// implement poll abstract method
 HandlFuture sum_poll(void* task){
-	int* datadd = (int*)((Future*)task)->data;
-	size_t size = ARRAY_SIZE(datadd); 
+	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
+	size_t size = ARRAY_SIZE(datadd->appendlist); 
 	if(size > 1 && i < END){
 		int res = 0;
 		for(int i = 0 ; i < size ; i++){
-			res += *(datadd + i);
+			res += *(datadd->appendlist + i);
 		}
 		printf("res : %d\n" , res);
 		puts("-------------------");
-		idx = 0;
-		datadd[idx++] = res;
+		datadd->idx = 0;
+		datadd->appendlist[datadd->idx++] = res;
 		return (HandlFuture){
 			.isfinished = false,
 			.iserror = false,
@@ -80,21 +87,24 @@ void* logg(void* data , int task){
 
 int main(){
 	srand(time(NULL));
-	// we need array of 3 integer 
 
-	int* appendlist = malloc(sizeof(int)*3);
-	appendlist[idx++] = rand() % 100;
-	RLCollections queue = Queue(Buf_Disable);
-	RLDefer(queue.Clear);
+	SumRandom* target = malloc(sizeof(SumRandom));
+	target->appendlist = malloc(sizeof(int)*3); 
+	target->idx = 0;
 
-	Future* add_task = FutureNewTask(random_poll , appendlist);
-	Future* sum_task = FutureNewTask(sum_poll    , appendlist);
+	target->appendlist[target->idx++] = rand() % 100;
 
-	queue.Push(RL_VOIDPTR , add_task);
-	queue.Push(RL_VOIDPTR , sum_task);
+	Future* tasks[2] = {
+		FutureNewTask(random_poll , target),
+		FutureNewTask(sum_poll    , target)
+	};
 
-	FutureLoop(queue , NULL);
+	FutureAddTasks(tasks , 2);
 
-	printf("\nfinal result : %d" , *appendlist);
+	FutureLoop(NULL);
+
+	printf("\nfinal result : %d , %d | with size : %zu" , *target->appendlist, *(target->appendlist + 1) , ARRAY_SIZE(target->appendlist));
+	// you need to manage allocated data of structure fields
+	free(target->appendlist);
 	return 0;
 }

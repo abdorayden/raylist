@@ -45,22 +45,8 @@ HandlFuture task_poll(void* task) {
 	};
 }
 
-// for handle the return data
-//void* printvalue(void* data , int task){
-//	// if the function executed in task 3
-//	if(task == 2){
-//		if(*(int*)data >= 1000)
-//			*(int*)data += 5;
-//	}
-//	printf("Debug :: %d\n" , *(int*)data);
-//	return data;
-//}
-
 int main(void)
 {
-	/// init our object this queue has no limit buffer 
-	RLCollections queue = Queue(Buf_Disable);
-
 	// allocate the data
 	CounterData* data1 = malloc(sizeof(CounterData));
 	data1->count = 0;
@@ -83,28 +69,17 @@ int main(void)
 	data5->max_count = 50;
 
 	// allocate 5 tasks
-	Future* task1 = FutureNewTask(task_poll,data1);
+	Future* task[5];
+	task[0] = FutureNewTask(task_poll,data1);
+	task[1] = FutureNewTask(task_poll,data2);
+	task[2] = FutureNewTask(task_poll,data3);
+	task[3] = FutureNewTask(task_poll,data4);
+	task[4] = FutureNewTask(task_poll,data5);
 
-	Future* task2 = FutureNewTask(task_poll,data2);
+	FutureAddTasks(task,5);
 
-	Future* task3 = FutureNewTask(task_poll,data3);
-
-	Future* task4 = FutureNewTask(task_poll,data4);
-
-	Future* task5 = FutureNewTask(task_poll,data5);
-
-	// push tasks to the queue
-	queue.Push(RL_VOIDPTR , task1);
-	queue.Push(RL_VOIDPTR , task2);
-	queue.Push(RL_VOIDPTR , task3);
-	queue.Push(RL_VOIDPTR , task4);
-	queue.Push(RL_VOIDPTR , task5);
-
-	// execute tasks
-	//FutureLoop(queue , printvalue);
-
-	// testing lambda
-	FutureLoop(queue , lambda(void* , (void* data , int task) , {
+	// logging callback 
+	FutureLoop(lambda(void* , (void* data , int task) , {
 		// if the function executed in task 3
 		if(task == 2){
 			if(*(int*)data >= 1000)

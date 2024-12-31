@@ -62,6 +62,28 @@ Future* FutureNewTask(Poll poll , void* data){
 	return future;
 }
 
+// NOTE: this future library take her own layer from raylist
+// if you gonna create multi lists (more layers) and you use future library 
+// you can't access first layer of the lists
+// 	|	 |
+// 	| layer3 |
+// 	| layer2 |
+// 	| layer1 | <- first layer is taken by future library
+// 	 --------
+#define FUTURE_LAYER	1
+RLLOCAL RLCollections FutureQueue;
+
+void FutureAddTasks(Future** futures , size_t n){
+	// init queue
+	FutureQueue = Queue(Buf_Disable);
+	RLSetObject(FUTURE_LAYER);
+
+	// push array of tasks to queue
+	for(size_t start = 0 ; start < n ; start++){
+		FutureQueue.Push(RL_VOIDPTR , futures[start]);
+	}
+}
+
 // executable function
 //  |	   	|							      |	          |
 //  |      	|                                                             |	          |
@@ -71,17 +93,19 @@ Future* FutureNewTask(Poll poll , void* data){
 //  |  func1    |                                                             |  func2    |
 //  |___________|                                                      	      |___________|
 
-void FutureLoop(RLCollections queue , DoWorkInFutureLoop callback) {
-	// while queue is not empty
-	while (!queue.Is_Empty()) {
+void FutureLoop(DoWorkInFutureLoop callback) {
+	RLSetObject(FUTURE_LAYER);
+	RLDefer(FutureQueue.Clear);
+	// while FutureQueue is not empty
+	while (!FutureQueue.Is_Empty()) {
 		// pop the unit task
-		Future* curr = (Future*)queue.Pop();
+		Future* curr = (Future*)FutureQueue.Pop();
 
 		HandlFuture handle = curr->poll((void*)curr);
 		// call function and check if function finished or not
 		if (!handle.isfinished) {
 			// function is not finished 
-			// we pushed back to the queue
+			// we pushed back to the FutureQueue
 			if(callback != NULL){
 				// handle the data with callback function
 				handle.return_data = callback(handle.return_data , curr->task_id);
@@ -89,7 +113,7 @@ void FutureLoop(RLCollections queue , DoWorkInFutureLoop callback) {
 			if(handle.iserror){
 				// check errno or log error
 			}
-			queue.Push(RL_VOIDPTR , curr);
+			FutureQueue.Push(RL_VOIDPTR , curr);
 		} else {
 			// function is done 
 			// free the allocated data curr and skip
@@ -97,4 +121,4 @@ void FutureLoop(RLCollections queue , DoWorkInFutureLoop callback) {
 		}
 	}
 }
-#endif
+#endif // FUTURE_C
