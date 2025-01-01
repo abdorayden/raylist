@@ -49,6 +49,17 @@
     default	: "unknown"	  \
     )
 
+// lambda call back function in C
+// i see this macro is usefull because sometimes you need to implement function directly 
+// if you got problem or warnings use -Wa,--noexecstack flag when you compile your program
+
+#define RLAmbda(RLAmbda$_ret, RLAmbda$_args, RLAmbda$_body)		\
+	({								\
+	RLAmbda$_ret RLAmbda$__anon$ RLAmbda$_args			\
+	RLAmbda$_body							\
+	&RLAmbda$__anon$;						\
+	})
+
 /*
  *	local type
  * */
@@ -90,6 +101,9 @@ RLLOCAL LBOOL revesed = false;
  *	so we used the defualt 
  * */
 
+#ifndef RLSIZEOF
+#define RLSIZEOF	sizeof
+#endif
 
 #ifndef RLALLOC
 #define RLALLOC	malloc
@@ -233,7 +247,7 @@ static int list_index = 0;
 //
 //    Example : 
 //    	... // list is already init
-//    	RLCopyObject(sizeof(struct MyStruct));
+//    	RLCopyObject(RLSIZEOF(struct MyStruct));
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);	// append more data with same size
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
@@ -265,8 +279,22 @@ typedef enum{
 
 typedef LBOOL (*FILTERCALLBACK)(void*);
 
+// RLFilter macro is callback function for Filter method
+// this callback function always return LBOOL and accept void* rlfilterdata
+// it's so simple that you don''t have to define another function and name it 
+// you can just call Filter method and give it RLFilter callback directly
+#define RLFilter(body) 	\
+	RLAmbda(LBOOL , (void* rlfilterdata) , body)
+
 // map call back function
 typedef void* (*MAPCALLBACK)(void*);
+
+// RLMap macro is callback function for map method
+// this callback function always return void* and accept void* rlmapdata
+// it's so simple that you don''t have to define another function and name it 
+// you can just call Map method and give it RLMap callback directly
+#define RLMap(body) 	\
+	RLAmbda(void* , (void* rlmapdata) , body)
 
 // Exec function Flag
 typedef enum {
@@ -325,6 +353,7 @@ RLLOCAL LBOOL limit_buf	= false;
  *		
  * */
 
+// TODO : add foreach method
 typedef interface {
 #ifndef USING_LIST
 	/*
@@ -847,7 +876,7 @@ RLLOCAL void add_voidptr(
 		Type t, 
 		int idx
 ){
-	__List* temp = RLALLOC(sizeof(__List));
+	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
@@ -870,13 +899,13 @@ RLLOCAL void add_int(
 		Type t, 
 		int idx
 ){
-	__List* temp = RLALLOC(sizeof(__List));
+	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = RLALLOC(sizeof(int));
+	temp->data = RLALLOC(RLSIZEOF(int));
 	*(int*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -890,13 +919,13 @@ RLLOCAL void add_char(
 		Type t, 
 		int idx
 ){
-	__List* temp = RLALLOC(sizeof(__List));
+	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = RLALLOC(sizeof(char));
+	temp->data = RLALLOC(RLSIZEOF(char));
 	*(char*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -910,13 +939,13 @@ RLLOCAL void add_float(
 		Type t, 
 		int idx
 ){
-	__List* temp = RLALLOC(sizeof(__List));
+	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
 		status = LIST_MEMALLOC;
 		return;
 	}
-	temp->data = RLALLOC(sizeof(float));
+	temp->data = RLALLOC(RLSIZEOF(float));
 	*(float*)(temp->data) = val;
 	temp->type = t;                 
 	temp->index = idx;              
@@ -953,7 +982,7 @@ RLLOCAL void local_l_insert(__List** __list__ , int idx , Type type , void* data
 				local_list->index++;
 			}
 			if(idx == local_list->index){
-				__List* node = RLALLOC(sizeof(__List));
+				__List* node = RLALLOC(RLSIZEOF(__List));
 				if(node == NULL)
 				{
 					status = LIST_MEMALLOC;

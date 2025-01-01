@@ -79,13 +79,13 @@ int main(void)
 	FutureAddTasks(task,5);
 
 	// logging callback 
-	FutureLoop(lambda(void* , (void* data , int task) , {
+	FutureLoop(OnData({
 		// if the function executed in task 3
-		if(task == 2){
-			if(*(int*)data >= 1000)
-				*(int*)data += 5;
+		if(futuretask == 2){
+			if(*(int*)futuredata >= 1000)
+				*(int*)futuredata += 5;
 		}
-		printf("Debug :: %d\n" , *(int*)data);
-		return data;
-	}));
+		printf("Debug :: %d\n" , *(int*)futuredata);
+		return futuredata;
+	}) , NULL);
 }

@@ -23,13 +23,16 @@
 int i = 0;
 #define ARRAY_SIZE(x)	(sizeof(x)/sizeof(x[0]))
 
-typedef struct {
+typedef struct 
+{
 	int* appendlist;
 	int idx;
-}SumRandom;
+}
+SumRandom;
 
 // implement poll abstract method
-HandlFuture random_poll(void* task){
+HandlFuture random_poll(void* task)
+{
 	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
 	if(i < END){
 		i++;
@@ -53,7 +56,8 @@ HandlFuture random_poll(void* task){
 }
 
 // implement poll abstract method
-HandlFuture sum_poll(void* task){
+HandlFuture sum_poll(void* task)
+{
 	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
 	size_t size = ARRAY_SIZE(datadd->appendlist); 
 	if(size > 1 && i < END){
@@ -78,7 +82,8 @@ HandlFuture sum_poll(void* task){
 	};
 }
 
-void* logg(void* data , int task){
+void* logg(void* data , int task)
+{
 	if(task == 0){
 		printf("LOG : i = %d , random number = %d\n" , i , *(int*)data);
 	}
@@ -94,14 +99,24 @@ int main(){
 
 	target->appendlist[target->idx++] = rand() % 100;
 
-	Future* tasks[2] = {
+	Future* tasks[2] = 
+	{
 		FutureNewTask(random_poll , target),
 		FutureNewTask(sum_poll    , target)
 	};
 
 	FutureAddTasks(tasks , 2);
 
-	FutureLoop(NULL);
+	FutureLoop(OnData(
+	{
+			(void)futuretask;	// unused task
+			printf("OnData : %d\n" , *((SumRandom*)futuredata)->appendlist);
+			return futuredata;
+	}
+	) , OnErr({
+		(void)futuretask;
+		return KillTask;
+	}));
 
 	printf("\nfinal result : %d , %d | with size : %zu" , *target->appendlist, *(target->appendlist + 1) , ARRAY_SIZE(target->appendlist));
 	// you need to manage allocated data of structure fields

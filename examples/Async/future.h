@@ -10,6 +10,8 @@
 #define interface	struct
 #endif
 
+typedef int Task;
+
 // this structure used to handle return data
 // it contains bool isfinished to check if the task finish
 // and bool is error to handle error
@@ -25,7 +27,26 @@ typedef HandlFuture 	(*Poll)(void*);
 // this callback function called in FutureLoop to work with return_data
 // void* for the data
 // int for spesific task , the goal is to differentiate the work between tasks
-typedef void* 		(*DoWorkInFutureLoop)(void* , int);
+typedef void* 		(*FutureOnData)(void* , Task);
+
+// OnData anonymouse callback function macro to handle data directly
+#define OnData(body)	\
+	RLAmbda(void* , (void* futuredata , Task futuretask) , body)
+
+// StatusFuture
+typedef enum {
+	Ignore,
+	KillTask,
+	KillProgram
+}StatusFuture;
+
+// log error callback function accept return value to check the error , and task id
+// return StatusFuture to Determine the result after an error occurs
+typedef StatusFuture 	(*FutureOnErr)(Task);
+
+// OnErr anonymouse callback function macro to handle error directly
+#define OnErr(body)	\
+	RLAmbda(StatusFuture , (Task futuretask) , body)
 
 // unit task
 typedef interface Future {
@@ -34,21 +55,10 @@ typedef interface Future {
 	// the data
 	void* data;
 	// id of the task
-	int task_id;
+	Task task_id;
 }Future;
 
 static int task_count = 0;
-
-// lambda call back function in C
-// i see this macro is usefull because sometimes you need to implement function directly 
-// if you got problem use --std=gnu99 flag when you compile your program
-
-#define lambda(lambda$_ret, lambda$_args, lambda$_body)		\
-	({							\
-	lambda$_ret lambda$__anon$ lambda$_args			\
-	lambda$_body						\
-	&lambda$__anon$;					\
-	})
 
 #endif //FUTURE_H
 
@@ -93,9 +103,10 @@ void FutureAddTasks(Future** futures , size_t n){
 //  |  func1    |                                                             |  func2    |
 //  |___________|                                                      	      |___________|
 
-void FutureLoop(DoWorkInFutureLoop callback) {
+void FutureLoop(FutureOnData work , FutureOnErr logerr) {
 	RLSetObject(FUTURE_LAYER);
 	RLDefer(FutureQueue.Clear);
+	StatusFuture status = Ignore;
 	// while FutureQueue is not empty
 	while (!FutureQueue.Is_Empty()) {
 		// pop the unit task
@@ -104,20 +115,31 @@ void FutureLoop(DoWorkInFutureLoop callback) {
 		HandlFuture handle = curr->poll((void*)curr);
 		// call function and check if function finished or not
 		if (!handle.isfinished) {
+			if(handle.iserror){
+				if(logerr != NULL){
+					status = logerr(curr->task_id);
+					if(status != Ignore){
+						break;
+					}
+				}
+			}
 			// function is not finished 
 			// we pushed back to the FutureQueue
-			if(callback != NULL){
-				// handle the data with callback function
-				handle.return_data = callback(handle.return_data , curr->task_id);
-			}
-			if(handle.iserror){
-				// check errno or log error
+			if(work != NULL){
+				// handle the data with work function
+				handle.return_data = work(handle.return_data , curr->task_id);
 			}
 			FutureQueue.Push(RL_VOIDPTR , curr);
 		} else {
 			// function is done 
 			// free the allocated data curr and skip
-			free(curr);
+			RLFREE(curr);
+		}
+		if(status == KillTask){
+			RLFREE(curr);
+		} else if(status == KillProgram){
+			RLFREE(curr);
+			return;
 		}
 	}
 }
