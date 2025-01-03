@@ -52,6 +52,8 @@
 // lambda call back function in C
 // i see this macro is usefull because sometimes you need to implement function directly 
 // if you got problem or warnings use -Wa,--noexecstack flag when you compile your program
+// NOTE: this is gcc extension , that's mean this lambda function will not work if you are using other compiler
+#ifdef __GNUC__
 
 #define RLAmbda(RLAmbda$_ret, RLAmbda$_args, RLAmbda$_body)		\
 	({								\
@@ -59,6 +61,8 @@
 	RLAmbda$_body							\
 	&RLAmbda$__anon$;						\
 	})
+
+#endif
 
 /*
  *	local type
@@ -283,8 +287,13 @@ typedef LBOOL (*FILTERCALLBACK)(void*);
 // this callback function always return LBOOL and accept void* rlfilterdata
 // it's so simple that you don''t have to define another function and name it 
 // you can just call Filter method and give it RLFilter callback directly
+
+#ifdef __GNUC__
+
 #define RLFilter(body) 	\
 	RLAmbda(LBOOL , (void* rlfilterdata) , body)
+
+#endif
 
 // map call back function
 typedef void* (*MAPCALLBACK)(void*);
@@ -293,8 +302,13 @@ typedef void* (*MAPCALLBACK)(void*);
 // this callback function always return void* and accept void* rlmapdata
 // it's so simple that you don''t have to define another function and name it 
 // you can just call Map method and give it RLMap callback directly
+
+#ifdef __GNUC__
+
 #define RLMap(body) 	\
 	RLAmbda(void* , (void* rlmapdata) , body)
+
+#endif
 
 // Exec function Flag
 typedef enum {

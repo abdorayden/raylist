@@ -6,6 +6,7 @@
 //        Generate random numbers continuously and store them in a list.
 //        Calculate the sum of numbers in the list every second.
 //    Purpose: Test task synchronization with shared resources (e.g., a list).
+#include <assert.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,57 +28,56 @@ typedef struct
 {
 	int* appendlist;
 	int idx;
-}
-SumRandom;
+} SumRandom;
 
 // implement poll abstract method
-HandlFuture random_poll(void* task)
+HandlFuture random_poll(void* data)
 {
-	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
+	SumRandom* datadd = (SumRandom*)data;
 	if(i < END){
 		i++;
 		datadd->appendlist[datadd->idx++] = rand() % 100;
 		// DEBUGGING
-		for(int x = 0; x < ARRAY_SIZE(datadd->appendlist) ; x++)
-			printf("datadd : %d\n" , datadd->appendlist[x]);
+		//for(int x = 0; x < ARRAY_SIZE(datadd->appendlist) ; x++)
+		//	printf("datadd : %d\n" , datadd->appendlist[x]);
 
-		puts("-----------------");
+		//puts("-----------------");
 		return (HandlFuture){
 			.isfinished = false,
-			.iserror = false,
+			.iserror = NULL,
 			.return_data = datadd
 		};
 	}
 	return (HandlFuture){
 		.isfinished = true,
-		.iserror = false,
+		.iserror = "in random function task equal to NULL",
 		.return_data = NULL
 	};
 }
 
 // implement poll abstract method
-HandlFuture sum_poll(void* task)
+HandlFuture sum_poll(void* data)
 {
-	SumRandom* datadd = (SumRandom*)((Future*)task)->data;
+	SumRandom* datadd = (SumRandom*)data;
 	size_t size = ARRAY_SIZE(datadd->appendlist); 
 	if(size > 1 && i < END){
 		int res = 0;
 		for(int i = 0 ; i < size ; i++){
 			res += *(datadd->appendlist + i);
 		}
-		printf("res : %d\n" , res);
-		puts("-------------------");
+		//printf("res : %d\n" , res);
+		//puts("-------------------");
 		datadd->idx = 0;
 		datadd->appendlist[datadd->idx++] = res;
 		return (HandlFuture){
 			.isfinished = false,
-			.iserror = false,
+			.iserror = NULL,
 			.return_data = datadd
 		};
 	}
 	return (HandlFuture){
 		.isfinished = true,
-		.iserror = false,
+		.iserror = "in sum function data equal to NULL",
 		.return_data = NULL
 	};
 }
@@ -94,28 +94,27 @@ int main(){
 	srand(time(NULL));
 
 	SumRandom* target = malloc(sizeof(SumRandom));
-	target->appendlist = malloc(sizeof(int)*3); 
+	target->appendlist = malloc(sizeof(int)*5); 
 	target->idx = 0;
 
 	target->appendlist[target->idx++] = rand() % 100;
 
 	Future* tasks[2] = 
 	{
-		FutureNewTask(random_poll , target),
-		FutureNewTask(sum_poll    , target)
+		FutureNewTask(random_poll , target, Critical),
+		FutureNewTask(sum_poll    , target, Low)
 	};
 
 	FutureAddTasks(tasks , 2);
 
 	FutureLoop(OnData(
 	{
-			(void)futuretask;	// unused task
-			printf("OnData : %d\n" , *((SumRandom*)futuredata)->appendlist);
-			return futuredata;
+			if(futuretask == 1)
+				printf("OnData : %d\n" , *((SumRandom*)futuredata)->appendlist);
 	}
 	) , OnErr({
-		(void)futuretask;
-		return KillTask;
+		fprintf(stderr , "ERROR : task %d :: %s" , futuretask , futurerror);
+		return KillProgram;
 	}));
 
 	printf("\nfinal result : %d , %d | with size : %zu" , *target->appendlist, *(target->appendlist + 1) , ARRAY_SIZE(target->appendlist));

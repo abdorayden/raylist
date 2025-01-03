@@ -1,4 +1,3 @@
-
 /*
  *	implements asynchronous run functions in single thread using queue in raylist library 
  *	RayList v2.3.0
@@ -20,9 +19,9 @@ typedef struct {
 
 // implementation of abstract method poll
 // NOTE : poll function should return HandlFuture structure
-HandlFuture task_poll(void* task) {
+HandlFuture task_poll(void* dta) {
 	// getting the data from task
-	CounterData* data = (CounterData*)((Future*)task)->data;
+	CounterData* data = (CounterData*)dta;
 
 	// check if count is less than count_max
 	if (data->count < data->max_count) {
@@ -31,16 +30,16 @@ HandlFuture task_poll(void* task) {
 		// return NULL (function is not finished yet)
 		return (HandlFuture){
 			.isfinished = false,
-			.iserror = false,
+			.iserror = NULL,
 			.return_data = (void*)&data->count
 		};
     	}
 	// free allocated data memory
-	free(data);
+	//free(data);
 	// return task (task is not NULL so function is done)
 	return (HandlFuture){
 		.isfinished = true,
-		.iserror = false,
+		.iserror = NULL,
 		.return_data = NULL
 	};
 }
@@ -70,11 +69,11 @@ int main(void)
 
 	// allocate 5 tasks
 	Future* task[5];
-	task[0] = FutureNewTask(task_poll,data1);
-	task[1] = FutureNewTask(task_poll,data2);
-	task[2] = FutureNewTask(task_poll,data3);
-	task[3] = FutureNewTask(task_poll,data4);
-	task[4] = FutureNewTask(task_poll,data5);
+	task[0] = FutureNewTask(task_poll,data1,Low);
+	task[1] = FutureNewTask(task_poll,data2,Low);
+	task[2] = FutureNewTask(task_poll,data3,Low);
+	task[3] = FutureNewTask(task_poll,data4,Low);
+	task[4] = FutureNewTask(task_poll,data5,Low);
 
 	FutureAddTasks(task,5);
 
@@ -84,8 +83,9 @@ int main(void)
 		if(futuretask == 2){
 			if(*(int*)futuredata >= 1000)
 				*(int*)futuredata += 5;
+		}else if(futuretask == 3){
+			*(int*)futuredata += 5;
 		}
 		printf("Debug :: %d\n" , *(int*)futuredata);
-		return futuredata;
 	}) , NULL);
 }
