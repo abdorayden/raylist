@@ -25,6 +25,9 @@
 #define LIST_H
 #define LIST_INCLUDED 
 
+// TODO: add trees
+// TODO: add graphs
+
 // to check if raylist is included
 
 // 	typeof pragma returns string contained type of variable
@@ -70,26 +73,17 @@
 #define RLLOCAL	static
 
 /*
- *	if not defined LBOOL the developer not using other boolean style
- *	so we used the defualt 
+ *	check if standerd libc is included
  * */
-#ifndef LBOOL
 
-typedef enum{
-	/* by default false take 0 value and that means false 		*/
-	false,
-	/* not zero that means true 					*/
-	true = !(false)
-}bool;
-#define LBOOL bool
-
+#if !defined(__STDBOOL_H)
+#include <stdbool.h>
+#define RLBOOL bool
 #endif
 
-RLLOCAL LBOOL revesed = false;
-
-/*
- *	check if stdlib is included
- * */
+#if !defined(__STDARG_H)
+#include <stdarg.h>
+#endif
 
 #if !defined(_STDLIB_H)
 #include <stdlib.h>
@@ -99,6 +93,22 @@ RLLOCAL LBOOL revesed = false;
 #include <string.h>
 #endif
 
+// NOTE: RLDefer macro detect return  main function only to clear allocated memory by raylist
+// this API detect ctrl-c so if program crashed by ctrl-c signal memory will be freed
+// will be called in main List or Stack or Queue function sooooo yeah
+#ifndef _WIN32
+
+#ifndef _SIGNAL_H
+#include <signal.h>
+RLLOCAL inline void ctrl_c_raylist_handler(int sig);
+#endif
+
+#else
+#include <windows.h>
+RLLOCAL BOOL WINAPI ctrl_c_raylist_handler(DWORD sig);
+#endif
+
+RLLOCAL RLBOOL revesed = false;
 
 /*
  *	if not defined RLALLOC the developer not using other allocation memory style
@@ -197,7 +207,7 @@ typedef char* string;
 
 typedef void 	(*VOIDFUNCTION		)(void*);
 typedef int  	(*INTEGERFUNCTION  	)(void*);
-typedef LBOOL 	(*BOOLEANFUNCTION  	)(void*);
+typedef RLBOOL 	(*BOOLEANFUNCTION  	)(void*);
 typedef char 	(*CHARACTERFUNCTION	)(void*);
 typedef string 	(*STRINGFUNCTION 	)(void*);
 
@@ -225,7 +235,6 @@ static int list_index = 0;
 
 // RLDefer is defer function call atexit from stdlib to call function before quit the program
 // it does'n work if you press CTRL-C
-// TODO : handle CTRL-C to frees allocated list
 #define RLDefer		atexit	
 
 /*
@@ -257,12 +266,13 @@ static int list_index = 0;
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
 //    	RLDisableCopyObject();
 
-RLLOCAL LBOOL enable_copy = false;
+RLLOCAL RLBOOL enable_copy = false;
 RLLOCAL size_t copy_size = 0;
+
 #define RLCopyObject(size)					\
 	enable_copy = true;					\
 	if((size) < 0)	copy_size = (size) * -1;		\
-	else		copy_size = (size);
+	else if((size) > 0)		copy_size = (size);	
 
 #define RLDisableCopyObject()					\
 	enable_copy = false;					\
@@ -281,17 +291,17 @@ typedef enum{
 	ONLY		// only type
 }Filter_Flag;
 
-typedef LBOOL (*FILTERCALLBACK)(void*);
+typedef RLBOOL (*FILTERCALLBACK)(void*);
 
 // RLFilter macro is callback function for Filter method
-// this callback function always return LBOOL and accept void* rlfilterdata
+// this callback function always return RLBOOL and accept void* rlfilterdata
 // it's so simple that you don''t have to define another function and name it 
 // you can just call Filter method and give it RLFilter callback directly
 
 #ifdef __GNUC__
 
 #define RLFilter(body) 	\
-	RLAmbda(LBOOL , (void* rlfilterdata) , body)
+	RLAmbda(RLBOOL , (void* rlfilterdata) , body)
 
 #endif
 
@@ -353,7 +363,7 @@ typedef interface {
  * */
 #define Buf_Disable  -1	// NOTE : if this flag is enabled stack or queue will add data dynamic
 RLLOCAL int buffer = 0;
-RLLOCAL LBOOL limit_buf	= false;
+RLLOCAL RLBOOL limit_buf	= false;
 
 /*
  *	IfaceList struct act like class all thouse functions point to other functions 
@@ -371,9 +381,17 @@ RLLOCAL LBOOL limit_buf	= false;
 typedef interface {
 #ifndef USING_LIST
 	/*
+	 *	Any
+	 * */
+	RLBOOL (*List_Any)(void);
+	/*
+	 *	All
+	 * */
+	RLBOOL (*List_All)(void);
+	/*
 	 *	return true if list is empty else false
 	 * */
-	LBOOL (*List_Is_Empty)(
+	RLBOOL (*List_Is_Empty)(
 			void
 	);
 	/*
@@ -447,7 +465,7 @@ typedef interface {
 	 *		else 							// handle
 	 *
 	 * */
-	LBOOL (*List_Search)(
+	RLBOOL (*List_Search)(
 			int* ,
 			Type ,
 			void* 
@@ -565,6 +583,14 @@ typedef interface {
 	int (*List_Len)(void);
 #else
 	/*
+	 *	Any
+	 * */
+	RLBOOL (*Any)(void);
+	/*
+	 *	All
+	 * */
+	RLBOOL (*All)(void);
+	/*
 	 *	Insert function will take the data and insert at the idx variable it in __list__ global linked list variable
 	 *
 	 *	Insert(
@@ -632,7 +658,7 @@ typedef interface {
 	 *		else 							// handle
 	 *
 	 * */
-	LBOOL (*Search)(
+	RLBOOL (*Search)(
 			int* ,
 			Type ,
 			void* 
@@ -756,12 +782,12 @@ typedef interface {
 	 *	Max_Buffer() return true if buffer equal to fixed buffer else false
 	 * */
 
-	LBOOL (*Max_Buffer)(void);
+	RLBOOL (*Max_Buffer)(void);
 
 	/*
 	 *	return true if stack is empty else false
 	 * */
-	LBOOL (*Is_Empty)(
+	RLBOOL (*Is_Empty)(
 			void
 	);
 	/*
@@ -981,9 +1007,28 @@ RLLOCAL void init(void){
 	}
 }
 
-RLLOCAL LBOOL l_is_empty(void)
+RLLOCAL RLBOOL l_is_empty(void)
 {
 	return (global_count[list_index] == 0);
+}
+
+RLBOOL l_all(void){
+	__List* local_list = __list__[list_index];
+	while(local_list != NULL)
+	{
+		if(local_list->data == NULL)	return false;
+		local_list = local_list->next;
+	}
+	return true;
+} 
+RLBOOL l_any(void){
+	__List* local_list = __list__[list_index];
+	while(local_list != NULL)
+	{
+		if(local_list->data != NULL)	return true;
+		local_list = local_list->next;
+	}
+	return false;
 }
 
 // the complexity still O(N) in worst case the index helps you to know the data u want to get later
@@ -1026,7 +1071,7 @@ RLLOCAL void* l_peek(void)
 	return __list__[list_index]->data;
 }
 
-RLLOCAL LBOOL l_max_buf(){
+RLLOCAL RLBOOL l_max_buf(){
 	return (limit_buf && buffer == global_count[list_index]);
 }
 
@@ -1086,6 +1131,9 @@ RLLOCAL void l_insert(int idx , Type type , void* data){
 }
 
 
+/*
+ *	it's like List_Append but use generic so you can add value directly without reference
+ * */
 #define RLAppend(t , d) _Generic((d) , 		\
 			int : add_int,		\
 			char : add_char,	\
@@ -1150,6 +1198,28 @@ RLLOCAL void l_clear(void){
 	init();
 	revesed = false;
 }
+
+#ifdef _WIN32
+
+RLLOCAL BOOL WINAPI ctrl_c_raylist_handler(DWORD sig)
+{
+	if(sig == CTRL_C_EVENT)
+	{
+		l_clear();
+		exit(0);
+		return 1;
+	}
+	return 0;
+}
+#else
+
+RLLOCAL inline void ctrl_c_raylist_handler(int sig)
+{
+	l_clear();
+	exit(0);
+}
+#endif
+
 RLLOCAL void* local_exec(__List* __list__ ,int idx , void* data , Exec_Flag flag)
 {
 	if(idx > global_count[list_index]){	
@@ -1425,10 +1495,10 @@ RLLOCAL void l_map(MAPCALLBACK callback , Type type){
 	}
 }
 
-RLLOCAL void wait(RLAPIThread thread){
+RLLOCAL void rlwait(RLAPIThread thread){
 	RLWait(thread);
 }
-RLLOCAL void kill(RLAPIThread thread)
+RLLOCAL void rlkill(RLAPIThread thread)
 {
 	RLKill(thread);
 }
@@ -1454,8 +1524,8 @@ RLLOCAL IfaceThread exec_async(int idx , RLAPIParam data){
 		if(___temp->index == idx){
 			RLAPIThread thread = RLCreateThread(___temp->data , data);
 			th.thread = thread;
-			th.Wait = wait;
-			th.Kill = kill;
+			th.Wait = rlwait;
+			th.Kill = rlkill;
 			break;
 		}
 		___temp = ___temp->next;
@@ -1502,7 +1572,7 @@ RLLOCAL void* local_l_get(__List* __list__ , int idx)
 RLLOCAL void* l_get(int idx){
 	return local_l_get(__list__[list_index] , idx);
 }
-RLLOCAL LBOOL local_l_search(
+RLLOCAL RLBOOL local_l_search(
 		__List* __list__,
 		int* idx ,
 		Type type ,
@@ -1540,7 +1610,7 @@ RLLOCAL LBOOL local_l_search(
 				}
 			}break;
 			case RL_BOOL:{
-				if(*(LBOOL*)data){
+				if(*(RLBOOL*)data){
 					if(idx != NULL)
 						*idx = ___temp->index ;
 				 	return true;
@@ -1555,7 +1625,7 @@ RLLOCAL LBOOL local_l_search(
 	}
 	return false;
 }
-RLLOCAL LBOOL l_search(
+RLLOCAL RLBOOL l_search(
 		int* idx ,
 		Type type ,
 		void* data
@@ -1644,6 +1714,12 @@ RLList List(int count , ...)
 	va_list args;
 	va_start(args , count);
 
+#ifndef _WIN32
+	signal(SIGINT , ctrl_c_raylist_handler);
+#else
+	SetConsoleCtrlHandler(ctrl_c_raylist_handler , TRUE);
+#endif
+
 	RLList cl;
 	global_count[list_index] = count;
 	int c = 0;
@@ -1698,6 +1774,9 @@ RLList List(int count , ...)
 	if(c == 0)	status = LIST_EMPTY;
 	va_end(args);
 #ifndef USING_LIST
+	cl.List_All = l_all;
+	cl.List_Any = l_any;
+
 	cl.List_Is_Empty = l_is_empty;
 	cl.List_Insert = l_insert;
 	cl.List_Append = l_append;
@@ -1714,6 +1793,9 @@ RLList List(int count , ...)
 	cl.List_Exec_Async = exec_async;
 	cl.List_Len = l_len;
 #else
+	cl.All = l_all;
+	cl.Any = l_any;
+
 	cl.Insert = l_insert;
 	cl.Append = l_append;
 	cl.Del_Index = l_delete;
@@ -1740,6 +1822,12 @@ RLCollections Stack(int buffer_size)
 		buffer = buffer_size;
 	}
 
+#ifndef _WIN32
+	signal(SIGINT , ctrl_c_raylist_handler);
+#else
+	SetConsoleCtrlHandler(ctrl_c_raylist_handler , TRUE);
+#endif
+
 	RLCollections cl;
 	global_count[list_index] = 0;
 
@@ -1761,6 +1849,12 @@ RLCollections Queue(int buffer_size)
 		limit_buf = true;
 		buffer = buffer_size;
 	}
+
+#ifndef _WIN32
+	signal(SIGINT , ctrl_c_raylist_handler);
+#else
+	SetConsoleCtrlHandler(ctrl_c_raylist_handler , TRUE);
+#endif
 
 	RLCollections cl;
 	global_count[list_index] = 0;
