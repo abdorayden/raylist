@@ -3,9 +3,9 @@
  *	this lib is under raylist v2.3.0 LICENSE 
  * */
 
-// TODO : separit tasks by priorety , HIGHT , MEDIEM , LOW
-// TODO : allow to kill task (timeout) 
 // TODO : separit tasks by groups every group chain between them and share data between them
+// TODO : and add timeout (just found better way)
+// TODO : create system managment task 
 
 #ifndef FUTURE_H
 #define FUTURE_H
@@ -15,6 +15,7 @@
 #endif
 
 typedef int Task;
+typedef int GroupCount;
 
 // this structure used to handle return data
 // it contains bool isfinished to check if the task finish
@@ -49,6 +50,8 @@ typedef enum {
 // every task has own Priority 
 // this task can executed 2 times if his priorety was hight except Low
 //
+//	Example :
+//
 // 	task1	<- Hight	|	this task will executed 2 times in round
 // 	task2	<- Mediem	| 	this will execute 1 time in round
 // 	task3	<- Low		|	this task it can be dispensed with except task1 and will executed 1 time in 2 rounds
@@ -78,9 +81,48 @@ typedef interface Future {
 	Task task_id;
 	// this is priorety of the task
 	Priority priority;
+	// future groupe id
+	GroupCount count;
 }Future;
 
 static int task_count = 0;
+
+#define FUTURE_LAYER	LIST_MAX
+RLLOCAL RLCollections FutureQueue;
+GroupCount count_group = 0;
+
+Future* FutureNewTask(Poll , void*, Priority);
+void FuturePushTaskDirectrly(Future*);
+void FutureAddTasksGroup(Future**, size_t);
+void FutureLoop(FutureOnData, FutureOnErr);
+
+#define done(data)			\
+	(HandlFuture) {			\
+		.isfinished = true,	\
+		.iserror = NULL,	\
+		.return_data = (data)	\
+	}
+
+#define notyet(data)			\
+	(HandlFuture) {			\
+		.isfinished = false,	\
+		.iserror = NULL,	\
+		.return_data = (data)	\
+	}
+
+#define error(err)				\
+	(HandlFuture) {				\
+		.isfinished = false,		\
+		.iserror = (err),		\
+		.return_data = NULL		\
+	}
+
+#define reject(err)				\
+	(HandlFuture) {				\
+		.isfinished = true,		\
+		.iserror = (err),		\
+		.return_data = NULL		\
+	}
 
 #endif //FUTURE_H
 
@@ -93,6 +135,7 @@ Future* FutureNewTask(Poll poll , void* data , Priority priority)
 	future->data = data;
 	future->task_id = task_count++;
 	future->priority = priority;
+	//future->count = count_group++;
 	return future;
 }
 
@@ -100,15 +143,25 @@ Future* FutureNewTask(Poll poll , void* data , Priority priority)
 // if you gonna create multi lists (more layers) and you use future library 
 // you can't access last layer of the lists
 //
-// 	|	 | <- last layer is taken by future library
-// 	| layer3 |
-// 	| layer2 |
-// 	| layer1 | 
-// 	 --------
-#define FUTURE_LAYER	LIST_MAX - 1
-RLLOCAL RLCollections FutureQueue;
+// 	|   last layer | <- last layer is taken by future library
+// 	|   layer3     |
+// 	|   layer2     |
+// 	|   layer1     | 
+// 	 --------------
 
-void FutureAddTasks(Future** futures , size_t n)
+
+// push single Task to the queue
+void FuturePushTaskDirectrly(Future* future){
+	// init queue
+	RLSetObject(FUTURE_LAYER);
+	FutureQueue = Queue(Buf_Disable);
+	RLCopyObject(RLSIZEOF(Future));
+	FutureQueue.Push(RL_VOIDPTR , future);
+	RLDisableCopyObject();
+}
+// this function will accept futures as one group it manage priority between them 
+// and can share data between them
+void FutureAddTasksGroup(Future** futures , size_t n)
 {
 	// init queue
 	RLSetObject(FUTURE_LAYER);
@@ -136,42 +189,73 @@ void FutureLoop(FutureOnData work , FutureOnErr logerr)
 {
 	RLSetObject(FUTURE_LAYER);
 	RLDefer(FutureQueue.Clear);
-	StatusFuture status = Ignore;
 	Future* curr;
+	// initial start from first group
+	// because they are so lucky *-*
+	GroupCount ctemp = 0;
+	// TODO : handle id of other groups using other queue to manage data between groupes in safety
+	// TODO : found better solution for alarm signal timeout
+	// TODO : handle memory managment in both libs future.h and raylist.h
+	// TODO : handle priority in FutureAddTasksGroup (critical pritiority must work after all priority tasks)
+	// Example : 
+	// 	three tasks : 1)- hight , 2)- Mediem , 3)- Low
+	// 	Hight -> Mediem -> Hight -> Low -> Hight -> Mediem
+	StatusFuture status = Ignore;
 	// while FutureQueue is not empty
 	while (!FutureQueue.Is_Empty()) {
 		// pop the unit task
 		curr = (Future*)FutureQueue.Pop();
 		HandlFuture handle = curr->poll((void*)curr->data);
 		// call function and check if function finished or not
-		if (!handle.isfinished) {
-			if(handle.iserror != NULL){
-				if(logerr != NULL){
-					status = logerr(handle.iserror , curr->task_id);
-					if(status != Ignore){
-						break;
-					}
-				}
+		// TODO: done
+		if(handle.iserror != NULL && handle.isfinished){
+			if(logerr != NULL) 	status = logerr(handle.iserror , curr->task_id);
+				// if logerr function was NULL task will be killed
+			else 			status = KillTask;
+
+			if(work != NULL)
+			{
+				if(handle.return_data != NULL)
+					work(handle.return_data , curr->task_id);
 			}
+
+		// error
+		} else if (handle.iserror && !handle.isfinished) {
 			// function is not finished 
 			// we pushed back to the FutureQueue
+			if(logerr != NULL){
+				// handle the data with work function
+				status = logerr(handle.iserror , curr->task_id);
+			}
+			if(status == Ignore){
+				FutureQueue.Push(RL_VOIDPTR , curr);
+			}
+		// notyet
+		}else if(!handle.isfinished && handle.return_data && !handle.iserror){
 			if(work != NULL){
 				// handle the data with work function
 				work(handle.return_data , curr->task_id);
 			}
 			FutureQueue.Push(RL_VOIDPTR , curr);
-		} else {
-			// function is done 
-			// free the allocated data curr and skip
-			RLFREE(curr);
+		}else if(handle.isfinished && handle.iserror) {
+			if(logerr != NULL)
+			{
+				status = logerr(handle.iserror , curr->task_id);
+			}else {
+				status = KillTask;
+			}
+		}
+
+		if(status == KillTask){
+			status = Ignore;
+			if(curr != NULL)
+				RLFREE(curr);
+		} else if(status == KillProgram){
+			if(curr != NULL)
+				RLFREE(curr);
+			exit(1);
 		}
 	}
-	if(status == KillTask){
-		if(curr != NULL)
-			RLFREE(curr);
-	} else if(status == KillProgram){
-		if(curr != NULL)
-			RLFREE(curr);
-	}
 }
+
 #endif // FUTURE_C

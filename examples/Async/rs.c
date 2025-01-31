@@ -69,17 +69,9 @@ HandlFuture sum_poll(void* data)
 		//puts("-------------------");
 		datadd->idx = 0;
 		datadd->appendlist[datadd->idx++] = res;
-		return (HandlFuture){
-			.isfinished = false,
-			.iserror = NULL,
-			.return_data = datadd
-		};
+		return notyet(datadd);
 	}
-	return (HandlFuture){
-		.isfinished = true,
-		.iserror = "in sum function data equal to NULL",
-		.return_data = NULL
-	};
+	return done(NULL);
 }
 
 void* logg(void* data , int task)
@@ -105,17 +97,14 @@ int main(){
 		FutureNewTask(sum_poll    , target, Low)
 	};
 
-	FutureAddTasks(tasks , 2);
+	FutureAddTasksGroup(tasks , 2);
 
 	FutureLoop(OnData(
 	{
 			if(futuretask == 1)
 				printf("OnData : %d\n" , *((SumRandom*)futuredata)->appendlist);
 	}
-	) , OnErr({
-		fprintf(stderr , "ERROR : task %d :: %s" , futuretask , futurerror);
-		return KillProgram;
-	}));
+	) , NULL);
 
 	printf("\nfinal result : %d , %d | with size : %zu" , *target->appendlist, *(target->appendlist + 1) , ARRAY_SIZE(target->appendlist));
 	// you need to manage allocated data of structure fields
