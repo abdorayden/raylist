@@ -49,6 +49,9 @@ myList.List_Filter(myFilterFunction, RL_INT, ONLY);
 - `void Append(Type type, void* data)`: Appends an item to the list.
 - `void Filter(FILTERCALLBACK callback, Type type, Filter_Flag flag)`: Filters items in the list based on a callback function.
 
+##documentation
+check raylist documentation website [raylist](https://rayden-six.vercel.app/raylist)
+
 ## Examples
 For more detailed examples, please refer to the `examples` directory in the repository.
 
