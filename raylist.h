@@ -56,7 +56,9 @@
 // i see this macro is usefull because sometimes you need to implement function directly 
 // if you got problem or warnings use -Wa,--noexecstack flag when you compile your program
 // NOTE: this is gcc extension , that's mean this lambda function will not work if you are using other compiler
-#ifdef __GNUC__
+
+
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
 
 #define RLAmbda(RLAmbda$_ret, RLAmbda$_args, RLAmbda$_body)		\
 	({								\
@@ -65,6 +67,10 @@
 	&RLAmbda$__anon$;						\
 	})
 
+#else
+    #warning "This is not gcc, RLAmbda macro is not allowed"
+#define RLAmbda(RLAmbda$_ret, RLAmbda$_args, RLAmbda$_body)		\
+	NULL
 #endif
 
 /*
@@ -263,7 +269,7 @@ static int __raylist_self_index = 0;
 //    RLDisableCopyObject() do disable it
 //
 //    Example : 
-//    	... // list is already init
+//    	... // list is already __raylist__init_interfaces__
 //    	RLCopyObject(RLSIZEOF(struct MyStruct));
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);	// append more data with same size
 //    	my_list.Append(RL_VOIDPTR , (void*)&my_struct_var);
@@ -302,11 +308,15 @@ typedef RLBOOL (*FILTERCALLBACK)(void*);
 // it's so simple that you don''t have to define another function and name it 
 // you can just call Filter method and give it RLFilter callback directly
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
 
 #define RLFilter(body) 	\
 	RLAmbda(RLBOOL , (void* rlfilterdata) , body)
 
+#else
+    #warning "This is not gcc, RLFilter macro is not allowed"
+#define RLFilter(body) 	\
+	NULL
 #endif
 
 // map call back function
@@ -317,11 +327,15 @@ typedef void* (*MAPCALLBACK)(void*);
 // it's so simple that you don''t have to define another function and name it 
 // you can just call Map method and give it RLMap callback directly
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
 
 #define RLMap(body) 	\
 	RLAmbda(void* , (void* rlmapdata) , body)
 
+#else
+    #warning "This is not gcc, RLMap macro is not allowed"
+#define RLMap(body) 	\
+	NULL
 #endif
 
 // Exec function Flag
@@ -366,8 +380,8 @@ typedef interface {
  *	this for limit size of stack or queue
  * */
 #define Buf_Disable  -1	// NOTE : if this flag is enabled stack or queue will add data dynamic
-RLLOCAL int raylist_buffer = 0;
-RLLOCAL RLBOOL limit_buf	= false;
+RLLOCAL int __raylist__buf__ = 0;
+RLLOCAL RLBOOL __raylist_limit_buf__	= false;
 
 /*
  *	IfaceList struct act like class all thouse functions point to other functions 
@@ -792,7 +806,7 @@ typedef interface {
 // contains all method , push pop and more for stack and queue data structure
 typedef interface {
 	/*
-	 *	Max_Buffer() return true if raylist_buffer equal to fixed raylist_buffer else false
+	 *	Max_Buffer() return true if __raylist__buf__ equal to fixed __raylist__buf__ else false
 	 * */
 
 	RLBOOL (*Max_Buffer)(void);
@@ -1013,7 +1027,7 @@ RLLOCAL void add_float(
 			default : add_voidptr		\
 		)(l , v , t , i);
 
-RLLOCAL void init(void){
+RLLOCAL void __raylist__init_interfaces__(void){
 	for(int x = 0 ; x < LIST_MAX ; x++){
 		__raylist_self_list__[x] = NULL;
 		__raylist_self_global_count__[x] = 0;
@@ -1084,7 +1098,7 @@ RLLOCAL void* __raylist_self_stack_peek__(void)
 }
 
 RLLOCAL RLBOOL __raylist_self_max_buf__(){
-	return (limit_buf && raylist_buffer == __raylist_self_global_count__[__raylist_self_index]);
+	return (__raylist_limit_buf__ && __raylist__buf__ == __raylist_self_global_count__[__raylist_self_index]);
 }
 
 RLLOCAL int __raylist_self_list_len__(){
@@ -1155,8 +1169,8 @@ RLLOCAL void __raylist_self_list_insert__(int idx , Type type , void* data){
 
 #define RLPush(t , d) 												\
 	do{													\
-		if(limit_buf){											\
-			if(__raylist_self_global_count__[__raylist_self_index] < raylist_buffer){							\
+		if(__raylist_limit_buf__){											\
+			if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__){							\
 				_Generic((d) ,	 								\
 					int : add_int,								\
 					char : add_char,							\
@@ -1189,8 +1203,8 @@ RLLOCAL void __raylist_self_push__(
 )
 {
 	if(status != FINE) status = FINE;
-	if(limit_buf){
-		if(__raylist_self_global_count__[__raylist_self_index] < raylist_buffer)
+	if(__raylist_limit_buf__){
+		if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__)
 			__raylist_self_local_list_add__(&__raylist_self_list__[__raylist_self_index] , data, type , __raylist_self_global_count__[__raylist_self_index]++);
 	}else{
 		__raylist_self_local_list_add__(&__raylist_self_list__[__raylist_self_index] , data, type , __raylist_self_global_count__[__raylist_self_index]++);
@@ -1207,7 +1221,7 @@ RLLOCAL void __raylist_self_clear__(void){
 			current = temp;       
 		}
 	}
-	init();
+	__raylist__init_interfaces__();
 	revesed = false;
 }
 
@@ -1219,7 +1233,6 @@ RLLOCAL BOOL WINAPI ctrl_c_raylist_handler(DWORD sig)
 	{
 		__raylist_self_clear__();
 		exit(0);
-		return 1;
 	}
 	return 0;
 }
@@ -1809,7 +1822,7 @@ void __raylist_self_list_print__()
 
 RLList List(int count , ...)
 {
-	init();
+	__raylist__init_interfaces__();
 	va_list args;
 	va_start(args , count);
 
@@ -1919,10 +1932,10 @@ RLList List(int count , ...)
 
 RLLOCAL RLCollections __init_raylist_collection_start__(int buffer)
 {
-	init();
+	__raylist__init_interfaces__();
 	if(buffer != Buf_Disable){
-		limit_buf = true;
-		raylist_buffer = buffer ;
+		__raylist_limit_buf__ = true;
+		__raylist__buf__ = buffer ;
 	}
 
 #ifndef _WIN32
@@ -1932,6 +1945,7 @@ RLLOCAL RLCollections __init_raylist_collection_start__(int buffer)
 #endif
 
 	__raylist_self_global_count__[__raylist_self_index] = 0;
+	return (RLCollections){0};
 }
 
 RLCollections Stack(int buffer_size)
