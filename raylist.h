@@ -27,6 +27,7 @@
 
 // TODO: add trees
 // TODO: add graphs
+// TODO: add string interface
 
 // to check if raylist is included
 
@@ -81,6 +82,10 @@
 /*
  *	check if standerd libc is included
  * */
+
+#if !defined(__CLANG_STDINT_H)
+#include <stdint.h>
+#endif
 
 #if !defined(__STDBOOL_H)
 #include <stdbool.h>
@@ -175,6 +180,8 @@ RLLOCAL RLBOOL revesed = false;
 #endif
 
 
+typedef char* string;
+
 
 // Type enum contained bunch of types helps functions any variables type will work for
 // RL_STR for strings RL_BOOL for boolean ... 
@@ -194,21 +201,34 @@ typedef enum{
 }Type;
 
 typedef enum{
-	FINE = 0,
-	LIST_INDEX_OUT_OF_RANGE,
+	LIST_INDEX_OUT_OF_RANGE = 0,
 	LIST_MEMALLOC,
 	NULL_VALUE,
 	DATA_NOT_IN_PLACE,
+	RLCOLLENCTIONS_MAX__BUFFER,
 	ERROR_WAIT_THREAD,
 	ERROR_KILL_THREAD,
 	ERROR_CREATE_THREAD,
-	LIST_EMPTY
+	LIST_EMPTY,
+	LIST_SEARCH_DATA_NOTFOUND,
+	FINE 
 }ListError;
 
-// global status to handle raylist errors
-RLLOCAL ListError status = FINE;
+string __errors__[FINE] = {
+	[LIST_INDEX_OUT_OF_RANGE] = "[ERROR] list index out of range",
+	[LIST_MEMALLOC] = "[ERROR] list allocating memory",
+	[RLCOLLENCTIONS_MAX__BUFFER] = "[ERROR] you can't push more data in stack or queue because the buffer is limited",
+	[NULL_VALUE] = "[ERROR] NULL value detected",
+	[DATA_NOT_IN_PLACE] = "[ERROR] data in wrong place {function need data function type but found other data type}",
+	[ERROR_WAIT_THREAD] = "[ERROR] wait thread , use GetLastError() or check errorno code ",
+	[ERROR_KILL_THREAD] = "[ERROR] kill thread , use GetLastError() or check errorno code ",
+	[ERROR_CREATE_THREAD] = "[ERROR] create thread , use GetLastError() or check errorno code ",
+	[LIST_SEARCH_DATA_NOTFOUND] = "[ERROR] data is not in the list",
+	[LIST_EMPTY] = "[ERROR] list empty"
+};
 
-typedef char* string;
+// global __raylist___self__status__ to handle raylist errors
+RLLOCAL ListError __raylist___self__status__ = FINE;
 
 /*
  *	the call back function type in list
@@ -338,6 +358,32 @@ typedef void* (*MAPCALLBACK)(void*);
 	NULL
 #endif
 
+typedef void (*MAPERRORCALLBACK)(string);
+
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
+
+#define RLMapError(body) 	\
+	RLAmbda(void , (string error) , body)
+
+#else
+    #warning "This is not gcc, RLMapError macro is not allowed"
+#define RLMapError(body) 	\
+	NULL
+#endif
+
+typedef void (*MAPDATACALLBACK)(void*);
+
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
+
+#define RLMapData(body) 	\
+	RLAmbda(void , (void* data) , body)
+
+#else
+    #warning "This is not gcc, RLMapData macro is not allowed"
+#define RLMapData(body) 	\
+	NULL
+#endif
+
 // Exec function Flag
 typedef enum {
 	/* return value from Exec function
@@ -395,6 +441,39 @@ RLLOCAL RLBOOL __raylist_limit_buf__	= false;
  *		
  * */
 
+RLLOCAL void* __raylist__returned_data__ = NULL;
+
+typedef interface{
+	/*
+	 *  MapError method used for handling error
+	 * */
+	void (*MapError)(
+			MAPERRORCALLBACK
+	);
+
+	/*
+	 *  MapData method used for handling data
+	 * */
+	void (*MapData)(
+			MAPDATACALLBACK
+	);
+
+	RLBOOL (*IsError)(
+			void
+	);
+
+	/*
+	 *	Unwrup method used for ignore the error
+	 * */
+	void (*Unwrap)(void);
+
+	/*
+	 *	GetData method for getting the data
+	 * */
+	void* (*GetData)(void);
+
+}RLResult;
+
 // NOTE: this interface can anyone implements thiere functions
 // NOTE: raylist use List and Stack and Queue function to implement this functions
 typedef interface {
@@ -428,7 +507,7 @@ typedef interface {
 	 *	Exemple :
 	 *		my_list.List_Insert(1 , RL_BOOL , true);
 	 * */
-	void (*List_Insert)(
+	RLResult (*List_Insert)(
 			int idx,
 			Type type,
 			void* data
@@ -470,7 +549,7 @@ typedef interface {
 	 *								2
 	 *							]
 	 * */
-	void (*List_Filter)(
+	RLResult (*List_Filter)(
 			FILTERCALLBACK,
 			Type , 
 			Filter_Flag flag
@@ -491,11 +570,15 @@ typedef interface {
 	 *		else 							// handle
 	 *
 	 * */
-	RLBOOL (*List_Search)(
-			int* ,
+	RLResult (*List_Search)(
 			Type ,
 			void* 
 	);
+	//RLBOOL (*List_Search)(
+	//		int* ,
+	//		Type ,
+	//		void* 
+	//);
 	/*
 	 *	List_Del_Index function takes index and delete it from the linked list
 	 *	complexity O(N)
@@ -508,7 +591,7 @@ typedef interface {
 	 *		my_list.List_Del_Index(3);
 	 *
 	 * */
-	void (*List_Del_Index)(
+	RLResult (*List_Del_Index)(
 			int idx 
 	);
 	/*
@@ -523,7 +606,7 @@ typedef interface {
 	 *		the data pointer in d variable now 
 	 *
 	 * */
-	void* (*List_Get)(
+	RLResult (*List_Get)(
 			int idx
 	);
 
@@ -531,7 +614,7 @@ typedef interface {
 	 *	List_Reverse function will reverse the list 
 	 *
 	 * */
-	void (*List_Reverse)(
+	RLResult (*List_Reverse)(
 			void
 	);
 	/*
@@ -552,7 +635,7 @@ typedef interface {
 	 * my_list.List_Exec_Sync(0 , NULL);
 	 * */
 
-	void* (*List_Exec_Sync)(
+	RLResult (*List_Exec_Sync)(
 			int idx,
 			void* data,
 			Exec_Flag flag
@@ -563,7 +646,7 @@ typedef interface {
 			void
 	);
 	/*
-	 *  return String if the error is set true (status > 0)
+	 *  return String if the error is set true (__raylist___self__status__ > 0)
 	 * */ 
 	string (*List_Get_Error)(
 			void
@@ -599,10 +682,14 @@ typedef interface {
 	 *	my_list.List_Exec_Async(0, NULL).Wait();
 	 *
 	 * */
-	IfaceThread (*List_Exec_Async)(
+	RLResult (*List_Exec_Async)(
 			int idx,
 			RLAPIParam data
 	);
+	//IfaceThread (*List_Exec_Async)(
+	//		int idx,
+	//		RLAPIParam data
+	//);
 
 	/*
 	 *	return length of list
@@ -628,7 +715,7 @@ typedef interface {
 	 *	Exemple :
 	 *		my_list.Insert(1 , RL_BOOL , true);
 	 * */
-	void (*Insert)(
+	RLResult (*Insert)(
 			int idx,
 			Type type,
 			void* data
@@ -665,7 +752,7 @@ typedef interface {
 	 *								2
 	 *							]
 	 * */
-	void (*Filter)(
+	RLResult (*Filter)(
 			FILTERCALLBACK,
 			Type , 
 			Filter_Flag flag
@@ -685,8 +772,7 @@ typedef interface {
 	 *		else 							// handle
 	 *
 	 * */
-	RLBOOL (*Search)(
-			int* ,
+	RLResult (*Search)(
 			Type ,
 			void* 
 	);
@@ -701,7 +787,7 @@ typedef interface {
 	 *		my_list.Del_Index(3);
 	 *
 	 * */
-	void (*Del_Index)(
+	RLResult (*Del_Index)(
 			int idx 
 	);
 	/*
@@ -716,7 +802,7 @@ typedef interface {
 	 *		the data pointer in d variable now 
 	 *
 	 * */
-	void* (*Get)(
+	RLResult (*Get)(
 			int idx
 	);
 
@@ -724,7 +810,7 @@ typedef interface {
 	 *	Reverse function will reverse the list 
 	 *
 	 * */
-	void (*Reverse)(
+	RLResult (*Reverse)(
 			void
 	);
 	/*
@@ -744,7 +830,7 @@ typedef interface {
 	 * my_list.Exec_Sync(0 , NULL);
 	 * */
 
-	void* (*Exec_Sync)(
+	RLResult (*Exec_Sync)(
 			int idx,
 			void* data,
 			Exec_Flag flag
@@ -754,7 +840,7 @@ typedef interface {
 			void
 	);
 	/*
-	 *  return String if the error is set true (status > 0)
+	 *  return String if the error is set true (__raylist___self__status__ > 0)
 	 * */ 
 	string (*Get_Error)(
 			void
@@ -790,7 +876,7 @@ typedef interface {
 	 *	my_list.List_Exec_Async(0, NULL).Wait();
 	 *
 	 * */
-	IfaceThread (*Exec_Async)(
+	RLResult (*Exec_Async)(
 			int idx,
 			RLAPIParam data
 	);
@@ -818,7 +904,7 @@ typedef interface {
 			void
 	);
 	/*
-	 *  return String if the error is set true (status > 0)
+	 *  return String if the error is set true (__raylist___self__status__ > 0)
 	 * */ 
 	string (*Get_Error)(
 			void
@@ -837,7 +923,7 @@ typedef interface {
 	 *		my_list.Push(RL_STR , "Hello World");
 	 *
 	 * */
-	void (*Push)(
+	RLResult (*Push)(
 			Type type,
 			void* data
 	);
@@ -846,14 +932,14 @@ typedef interface {
 	 *	Example : 
 	 *		void* value = my_list.Stack_Peek();
 	 * */
-	void* (*Peek)(void);
+	RLResult (*Peek)(void);
 	/*
 	 *	Stack_Pop function will pop the last value from the list
 	 *
 	 *	Example : 
 	 *		void* value = my_list.Stack_Pop();
 	 * */
-	void* (*Pop)(void);
+	RLResult (*Pop)(void);
 	// clear Stack
 	void (*Clear)(
 			void
@@ -861,6 +947,7 @@ typedef interface {
 
 }RLCollections;
 
+//String str(string str);
 
 RLList List(
 		int count , 	// number of data you
@@ -875,6 +962,47 @@ RLCollections Queue(int buffer_size);
 
 #ifdef LIST_C
 
+RLLOCAL inline void __raylist__result__maperror__(MAPERRORCALLBACK func)
+{
+	if(func == NULL || __raylist___self__status__ == FINE)
+		return;
+	func(__errors__[__raylist___self__status__]);
+}
+
+RLLOCAL inline void __raylist__result__mapdata__(MAPDATACALLBACK func)
+{
+	if(func == NULL || __raylist__returned_data__ == NULL){
+		return;
+	}
+	func(__raylist__returned_data__);
+}
+
+RLLOCAL inline RLBOOL __raylist__result__iserror__(void)
+{
+	return __raylist___self__status__ != FINE;
+}
+
+RLLOCAL inline void __raylist__result__unwrap__(void)
+{
+	__raylist___self__status__ = FINE;
+}
+
+RLLOCAL inline void* __raylist__result__getdata__(void)
+{
+	return __raylist__returned_data__;
+}
+
+RLLOCAL RLResult __raylist__impl__result(void* data){
+	RLResult result = {0};
+	__raylist__returned_data__ = data;
+	result.MapError = __raylist__result__maperror__;
+	result.MapData = __raylist__result__mapdata__;
+	result.IsError = __raylist__result__iserror__;
+	result.Unwrap = __raylist__result__unwrap__;
+	result.GetData = __raylist__result__getdata__;
+	return result;
+}
+
 /*
  *	api function 
  * */
@@ -884,13 +1012,13 @@ RLLOCAL RLAPIThread RLCreateThread(RLAPICallBackFunction func , RLAPIParam param
 	RLAPIThread thread;
 	if(pthread_create(&thread, NULL, func, parameter) == 0)
 	{
-		status = ERROR_CREATE_THREAD;
+		__raylist___self__status__ = ERROR_CREATE_THREAD;
 		return thread;
 	}
 #else
 	RLAPIThread thread = CreateThread(NULL , 0 , func , parameter , 0 , NULL);
 	if(thread == NULL){
-		status = ERROR_CREATE_THREAD;
+		__raylist___self__status__ = ERROR_CREATE_THREAD;
 		return NULL ;
 	}
 #endif
@@ -902,13 +1030,13 @@ RLLOCAL void RLWait(RLAPIThread thread)
 #ifdef _WIN32
 	if(WaitForSingleObject(thread , INFINITE) == WAIT_FAILED)
 	{
-		status = ERROR_WAIT_THREAD;
+		__raylist___self__status__ = ERROR_WAIT_THREAD;
 		return;
 	}
 #else
 	if(pthread_join(thread , NULL) != 0)
 	{
-		status = ERROR_WAIT_THREAD;
+		__raylist___self__status__ = ERROR_WAIT_THREAD;
 		return;
 	}
 #endif
@@ -924,14 +1052,14 @@ RLLOCAL void RLKill(RLAPIThread thread)
 #ifdef _WIN32
 	if(!TerminateThread(thread , 0))
 	{
-		status = ERROR_KILL_THREAD;
+		__raylist___self__status__ = ERROR_KILL_THREAD;
 		return;
 	}
 	CloseHandle(thread);
 #else
 	if(pthread_cancel(thread) != 0)
 	{
-		status = ERROR_WAIT_THREAD;
+		__raylist___self__status__ = ERROR_WAIT_THREAD;
 		return;
 	}
 #endif
@@ -946,7 +1074,7 @@ RLLOCAL void add_voidptr(
 	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
-		status = LIST_MEMALLOC;
+		__raylist___self__status__ = LIST_MEMALLOC;
 		return;
 	}
 	if(!enable_copy)
@@ -969,7 +1097,7 @@ RLLOCAL void add_int(
 	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
-		status = LIST_MEMALLOC;
+		__raylist___self__status__ = LIST_MEMALLOC;
 		return;
 	}
 	temp->data = RLALLOC(RLSIZEOF(int));
@@ -989,7 +1117,7 @@ RLLOCAL void add_char(
 	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
-		status = LIST_MEMALLOC;
+		__raylist___self__status__ = LIST_MEMALLOC;
 		return;
 	}
 	temp->data = RLALLOC(RLSIZEOF(char));
@@ -1009,7 +1137,7 @@ RLLOCAL void add_float(
 	__List* temp = RLALLOC(RLSIZEOF(__List));
 	if(temp == NULL)
 	{
-		status = LIST_MEMALLOC;
+		__raylist___self__status__ = LIST_MEMALLOC;
 		return;
 	}
 	temp->data = RLALLOC(RLSIZEOF(float));
@@ -1058,7 +1186,7 @@ RLBOOL __raylist_self_list_any__(void){
 	return false;
 }
 
-RLLOCAL void __raylist_self_local_list_insert__(__List** __raylist_self_list__ , int idx , Type type , void* data){
+RLLOCAL RLResult __raylist_self_local_list_insert__(__List** __raylist_self_list__ , int idx , Type type , void* data){
 	__List* local_list = *(__raylist_self_list__);
 
 	if(idx < __raylist_self_global_count__[__raylist_self_index] && idx >= 0){
@@ -1070,8 +1198,8 @@ RLLOCAL void __raylist_self_local_list_insert__(__List** __raylist_self_list__ ,
 				__List* node = RLALLOC(RLSIZEOF(__List));
 				if(node == NULL)
 				{
-					status = LIST_MEMALLOC;
-					return;
+					__raylist___self__status__ = LIST_MEMALLOC;
+					return __raylist__impl__result(NULL);
 				}
 				node->data = data;
 				node->type = type;
@@ -1089,12 +1217,20 @@ RLLOCAL void __raylist_self_local_list_insert__(__List** __raylist_self_list__ ,
 		}
 		__raylist_self_global_count__[__raylist_self_index]++;
 	}else{
-		__raylist_self_local_list_add__(__raylist_self_list__ ,data , type , __raylist_self_global_count__[__raylist_self_index]++);
+		__raylist___self__status__ = LIST_INDEX_OUT_OF_RANGE;
+		return __raylist__impl__result(NULL);
 	}
+	__raylist___self__status__ = FINE;
+	return __raylist__impl__result(NULL);
 }
-RLLOCAL void* __raylist_self_stack_peek__(void)
+RLLOCAL RLResult __raylist_self_stack_peek__(void)
 {
-	return __raylist_self_list__[__raylist_self_index]->data;
+	if(__raylist_self_list__[__raylist_self_index] == NULL){
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
+	}
+	__raylist___self__status__ = FINE;
+	return __raylist__impl__result(__raylist_self_list__[__raylist_self_index]->data);
 }
 
 RLLOCAL RLBOOL __raylist_self_max_buf__(){
@@ -1105,55 +1241,67 @@ RLLOCAL int __raylist_self_list_len__(){
 	return __raylist_self_global_count__[__raylist_self_index];
 }
 
-RLLOCAL void* __raylist_self_queue_peek__(void)
+RLLOCAL RLResult __raylist_self_queue_peek__(void)
 {
 	__List* temp = __raylist_self_list__[__raylist_self_index];
+	if(temp == NULL)
+	{
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
+	}
 	while(temp->next != NULL)	temp = temp->next;
-	return temp->data;
+	__raylist___self__status__ = FINE;
+	return __raylist__impl__result(temp->data);
 }
 
-RLLOCAL void* __raylist_self_local_queue_pop__(__List** __raylist_self_list__){
-	void* d;
+RLLOCAL RLResult __raylist_self_local_queue_pop__(__List** __raylist_self_list__){
 	if(*__raylist_self_list__ == NULL){
-		return NULL;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
 	}
+	__raylist___self__status__ = FINE;
+	void* d;
 	__List* ___temp = *__raylist_self_list__;
 	if((___temp)->next == NULL){
 		d = ___temp->data;
 		RLFREE(___temp);
 		*__raylist_self_list__ = NULL;
 		__raylist_self_global_count__[__raylist_self_index]--;
-		return d;
+		return __raylist__impl__result(d);
 	}
 	while((___temp)->next->next != NULL)	___temp = (___temp)->next;
 	d = ___temp->next->data;
 	RLFREE(___temp->next);
 	___temp->next = NULL;
 	__raylist_self_global_count__[__raylist_self_index]--;
-	return d;
+	return __raylist__impl__result(d);
 }
 
-RLLOCAL void* __raylist_self_queue_pop__(){
+RLLOCAL RLResult __raylist_self_queue_pop__(){
 	return __raylist_self_local_queue_pop__(&__raylist_self_list__[__raylist_self_index]);
 }
 
-RLLOCAL void* __raylist_self_local_stack_pop__(__List** __raylist_self_list__){
-	void* ret;
+RLLOCAL RLResult __raylist_self_local_stack_pop__(__List** __raylist_self_list__){
 	__List* temp = *__raylist_self_list__;
-	if(temp == NULL)	return NULL;
+	if(temp == NULL){
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
+	}
+	__raylist___self__status__ = FINE;
+	void* ret;
 	ret = temp->data;
 	*__raylist_self_list__ = (*__raylist_self_list__)->next;
 	RLFREE(temp);
 	__raylist_self_global_count__[__raylist_self_index]--;
-	return ret;
+	return __raylist__impl__result(ret);
 }
 
-RLLOCAL void* __raylist_self_stack_pop__(){
+RLLOCAL RLResult __raylist_self_stack_pop__(){
 	return __raylist_self_local_stack_pop__(&__raylist_self_list__[__raylist_self_index]);
 }
 
-RLLOCAL void __raylist_self_list_insert__(int idx , Type type , void* data){
-	__raylist_self_local_list_insert__(&__raylist_self_list__[__raylist_self_index] , idx , type , data);
+RLLOCAL RLResult  __raylist_self_list_insert__(int idx , Type type , void* data){
+	return __raylist_self_local_list_insert__(&__raylist_self_list__[__raylist_self_index] , idx , type , data);
 }
 
 
@@ -1177,6 +1325,8 @@ RLLOCAL void __raylist_self_list_insert__(int idx , Type type , void* data){
 					float : add_float,							\
 					default : add_voidptr							\
 				)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);			\
+			}else{											\
+				__raylist___self__status__ = RLCOLLENCTIONS_MAX__BUFFER;			\
 			}											\
 		}else{												\
 				_Generic((d) ,	 								\
@@ -1193,22 +1343,30 @@ RLLOCAL void __raylist_self_list_append__(
 		void* data
 )
 {
-	if(status != FINE) status = FINE;
+	if(__raylist___self__status__ != FINE) __raylist___self__status__ = FINE;
 	__raylist_self_local_list_add__(&__raylist_self_list__[__raylist_self_index] , data, type , __raylist_self_global_count__[__raylist_self_index]++);
 }
 
-RLLOCAL void __raylist_self_push__(
+RLLOCAL RLResult __raylist_self_push__(
 		Type type,
 		void* data
 )
 {
-	if(status != FINE) status = FINE;
+	if(__raylist___self__status__ != FINE) __raylist___self__status__ = FINE;
 	if(__raylist_limit_buf__){
-		if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__)
+		if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__){
 			__raylist_self_local_list_add__(&__raylist_self_list__[__raylist_self_index] , data, type , __raylist_self_global_count__[__raylist_self_index]++);
+			__raylist___self__status__ = FINE;
+			return __raylist__impl__result(NULL);
+		}else{
+			__raylist___self__status__ = RLCOLLENCTIONS_MAX__BUFFER;
+			return __raylist__impl__result(NULL);
+		}
 	}else{
 		__raylist_self_local_list_add__(&__raylist_self_list__[__raylist_self_index] , data, type , __raylist_self_global_count__[__raylist_self_index]++);
 	}
+	__raylist___self__status__ = FINE;
+	return __raylist__impl__result(NULL);
 }
 
 RLLOCAL void __raylist_self_clear__(void){
@@ -1245,19 +1403,21 @@ RLLOCAL inline void ctrl_c_raylist_handler(int sig)
 }
 #endif
 
-RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx , void* data , Exec_Flag flag)
+#define ExecuteAll	-1
+
+RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx , void* data , Exec_Flag flag)
 {
 	if(idx > __raylist_self_global_count__[__raylist_self_index]){	
-		status = LIST_INDEX_OUT_OF_RANGE;
-		return NULL;
+		__raylist___self__status__ = LIST_INDEX_OUT_OF_RANGE;
+		return __raylist__impl__result(NULL);
 	
 	}else if(__raylist_self_list__ == NULL){
-		status = LIST_EMPTY;
-		return NULL;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
 	}else{
-		status = FINE;
+		__raylist___self__status__ = FINE;
 	}
-	if(idx < 0 || idx > __raylist_self_global_count__[__raylist_self_index]){
+	if(idx < 0){
 		while(__raylist_self_list__ != NULL){
 			switch((__raylist_self_list__)->type){
 				// NOTE : OUTT flag will not work in that case
@@ -1377,7 +1537,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 					     if(data == NULL){
 						     void* (*call)() = (void*(*)())(__raylist_self_list__)->data;
 						     if(flag == OUTT){
-							     return (void*)call();
+							     return __raylist__impl__result((void*)call());
 						     }
 						     else if(flag == INPLACE){
 							     __raylist_self_list__->type = RL_VOIDPTR;
@@ -1386,11 +1546,11 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 						     {
 							     __raylist_self_list_append__(RL_VOIDPTR , (void*)call());
 						     }
-						     return NULL;
+						     return __raylist__impl__result(NULL);
 					     }else{
 						     void* (*call)(void*) = (void*(*)(void*))(__raylist_self_list__)->data;
 						     if(flag == OUTT){
-							     return (void*)call(data);
+							     return __raylist__impl__result((void*)call(data));
 						     }
 						     else if(flag == INPLACE){
 							     __raylist_self_list__->type = RL_VOIDPTR;
@@ -1399,25 +1559,25 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 						     {
 							     __raylist_self_list_append__(RL_VOIDPTR , (void*)call(data));
 						     }
-						     return NULL;
+						     return __raylist__impl__result(NULL);
 					     }
 					}break; 
 					case RL_STRFUNC : {
 						if(data == NULL){
 							string (*call)() = ((string(*)())(__raylist_self_list__)->data);
 							if(flag == OUTT)
-								return (char*)call();
+						     		return __raylist__impl__result((string)call());
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_STR;
 								__raylist_self_list__->data = (string)call();
 							}else{
 								__raylist_self_list_append__(RL_STR , (void*)call());
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}else{
 							string (*call)(void*) = ((string(*)(void*))(__raylist_self_list__)->data);
 							if(flag == OUTT){
-								return (string)call(data);
+						     		return __raylist__impl__result((string)call(data));
 							}
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_STR;
@@ -1425,7 +1585,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 							}else{
 								__raylist_self_list_append__(RL_STR , (void*)call(data));
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}
 					}break;
 					case RL_CHARFUNC : {
@@ -1434,7 +1594,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 						if(data == NULL){
 							char* (*call)() = ((char*(*)())(__raylist_self_list__)->data);
 							if(flag == OUTT){
-								return (void*)call();
+						     		return __raylist__impl__result((void*)call());
 							}
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_CHR;
@@ -1442,11 +1602,11 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 							}else{
 								__raylist_self_list_append__(RL_CHR , (void*)call());
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}else{
 							char* (*call)(void*) = ((char*(*)(void*))(__raylist_self_list__)->data);
 							if(flag == OUTT){
-								return (char*)call(data);
+						     		return __raylist__impl__result((void*)call(data));
 							}
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_INT;
@@ -1454,7 +1614,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 							}else{
 								__raylist_self_list_append__(RL_CHR , (void*)call(data));
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}
 					}break;
 					case RL_INTFUNC : {
@@ -1463,7 +1623,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 						if(data == NULL){
 							int* (*call)() = ((int*(*)())(__raylist_self_list__)->data);
 							if(flag == OUTT){
-								return (void*)call();
+						     		return __raylist__impl__result((void*)call());
 							}
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_INT;
@@ -1471,11 +1631,11 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 							}else{
 								__raylist_self_list_append__(RL_INT , (void*)call());
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}else{
 							int* (*call)(void*) = ((int*(*)(void*))(__raylist_self_list__)->data);
 							if(flag == OUTT){
-								return (int*)call(data);
+						     		return __raylist__impl__result((void*)call(data));
 							}
 							else if(flag == INPLACE) {
 								__raylist_self_list__->type = RL_INT;
@@ -1483,7 +1643,7 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 							}else{
 								__raylist_self_list_append__(RL_INT , (void*)call(data));
 							}
-							return NULL;
+						     	return __raylist__impl__result(NULL);
 						}
 					}break;
 					case  RL_VOIDFUNC:{
@@ -1497,15 +1657,15 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 								  __raylist_self_list_append__(RL_VOIDPTR , NULL);
 							  }
 							  call();
-						  }else{
+						}else{
 							  void (*call)(void*) = (void(*)(void*))(__raylist_self_list__)->data;
 							  if(flag == INPLACE){
 								  __raylist_self_list__->type = RL_VOIDPTR;
 								  __raylist_self_list__->data = NULL;
 							  }
 							  call(data);
-						  }
-						return NULL;
+						}
+						return __raylist__impl__result(NULL);
 					}break; 
 					default :{ 
 						__raylist_self_list__ = (__raylist_self_list__)->next;
@@ -1516,28 +1676,28 @@ RLLOCAL void* __raylist_self_local_exec__(__List* __raylist_self_list__ ,int idx
 			__raylist_self_list__ = (__raylist_self_list__)->next;
 		}
 	}
-	return NULL;
+	return __raylist__impl__result(NULL);
 }
 
-RLLOCAL void* __raylist_self_exec__(int idx , void* data , Exec_Flag flag){
+RLLOCAL RLResult __raylist_self_exec__(int idx , void* data , Exec_Flag flag){
 	return __raylist_self_local_exec__(__raylist_self_list__[__raylist_self_index] , idx , data , flag);
 }
 
-RLLOCAL void __raylist_self_local_delete__(
+RLLOCAL RLResult __raylist_self_local_delete__(
 		__List** __raylist_self_list__,
 		int idx
 		)
 {
 	if(*__raylist_self_list__ == NULL){
-		status = LIST_EMPTY;
-		return;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
 	}
 	if(idx > __raylist_self_global_count__[__raylist_self_index] || idx < 0)
 	{
-		status = LIST_INDEX_OUT_OF_RANGE;
-		return;
+		__raylist___self__status__ = LIST_INDEX_OUT_OF_RANGE;
+		return __raylist__impl__result(NULL);
 	}
-	status = FINE;
+	__raylist___self__status__ = FINE;
 	__List* ___temp = *__raylist_self_list__;
 	__List* prev = NULL;
 	if (___temp != NULL && ___temp->index == idx) {
@@ -1549,7 +1709,7 @@ RLLOCAL void __raylist_self_local_delete__(
 	        ___temp =  ___temp->next;
 	    }
 	    __raylist_self_global_count__[__raylist_self_index]--;
-	    return;
+	    return __raylist__impl__result(NULL);
 	}
 	while (___temp != NULL && ___temp->index != idx) {
 		if(!revesed && ___temp->index > 0)
@@ -1558,7 +1718,7 @@ RLLOCAL void __raylist_self_local_delete__(
 		___temp = ___temp->next;
 	}
 	if (___temp == NULL) {
-	    return;
+		return __raylist__impl__result(NULL);
 	}
 	prev->next = ___temp->next;
 	RLFREE(___temp);
@@ -1568,24 +1728,31 @@ RLLOCAL void __raylist_self_local_delete__(
 		___temp =  ___temp->next;
 	}
 	__raylist_self_global_count__[__raylist_self_index]--;
+	__raylist___self__status__ = FINE;
+	return __raylist__impl__result(NULL);
 }
-RLLOCAL void __raylist_self_delete__(int idx)
+RLLOCAL RLResult __raylist_self_delete__(int idx)
 {
 	__raylist_self_local_delete__(&__raylist_self_list__[__raylist_self_index] , idx);
 }
 
-RLLOCAL void __raylist_self_filter__(FILTERCALLBACK callback , Type type , Filter_Flag flag){
+RLLOCAL RLResult __raylist_self_filter__(FILTERCALLBACK callback , Type type , Filter_Flag flag){
 	__List* ___temp = __raylist_self_list__[__raylist_self_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
 			if(!callback(___temp->data)){
-				__raylist_self_delete__(___temp->index);
+				if(__raylist_self_delete__(___temp->index).IsError()){
+					return __raylist__impl__result(NULL);
+				}
 			}
 		}else if(flag == ALL){
-			__raylist_self_delete__(___temp->index);
+			if(__raylist_self_delete__(___temp->index).IsError()){
+				return __raylist__impl__result(NULL);
+			}
 		}
 		___temp = ___temp->next;
 	}
+	return __raylist__impl__result(NULL);
 }
 
 RLLOCAL void __raylist_self_list_map__(MAPCALLBACK callback , Type type){
@@ -1606,20 +1773,20 @@ RLLOCAL void rlkill(RLAPIThread thread)
 	RLKill(thread);
 }
 
-RLLOCAL IfaceThread __raylist_self_list_exec_async__(int idx , RLAPIParam data){
+RLLOCAL RLResult __raylist_self_list_exec_async__(int idx , RLAPIParam data){
 	__List* ___temp = __raylist_self_list__[__raylist_self_index];
 
 	IfaceThread th = {0};
 
 	if(___temp == NULL)
 	{
-		status = NULL_VALUE;
-		return th;
+		__raylist___self__status__ = NULL_VALUE;
+		return __raylist__impl__result(NULL);
 	}
 
 	if(idx < 0 || idx > __raylist_self_global_count__[__raylist_self_index]){
-		status = LIST_INDEX_OUT_OF_RANGE;
-		return th;
+		__raylist___self__status__ = LIST_INDEX_OUT_OF_RANGE;
+		return __raylist__impl__result(NULL);
 	}
 
 	while(___temp != NULL)
@@ -1633,97 +1800,79 @@ RLLOCAL IfaceThread __raylist_self_list_exec_async__(int idx , RLAPIParam data){
 				th.Kill = rlkill;
 				break;
 			}else {
-				status = DATA_NOT_IN_PLACE;
-				return th;
+				__raylist___self__status__ = DATA_NOT_IN_PLACE;
+				return __raylist__impl__result(NULL);
 			}
 		}
 		___temp = ___temp->next;
 	}
-	return th;
+	return __raylist__impl__result(&th);
 }
 
 RLLOCAL string __raylist_self_get_error__()
 {
-	switch(status){
-		case LIST_INDEX_OUT_OF_RANGE : return "[ERROR] list index out of range";
-		case LIST_EMPTY : return "[ERROR] list empty";
-		case LIST_MEMALLOC : return "[ERROR] list allocating memory";
-		case NULL_VALUE : return "[ERROR] NULL value detected";
-		case DATA_NOT_IN_PLACE : return "[ERROR] data in wrong place {function need data function type but found other data type}";
-		case ERROR_CREATE_THREAD : return "[ERROR] create thread , use GetLastError() or check errorno code ";
-		case ERROR_WAIT_THREAD : return "[ERROR] wait thread , use GetLastError() or check errorno code ";
-		case ERROR_KILL_THREAD : return "[ERROR] kill thread , use GetLastError() or check errorno code ";
-		default : return NULL;
-	}
+	if(__raylist___self__status__ == FINE)
+		return NULL;
+	return __errors__[__raylist___self__status__];
 }
 
-RLLOCAL void* __raylist_self_local_list_get__(__List* __raylist_self_list__ , int idx)
+RLLOCAL RLResult __raylist_self_local_list_get__(__List* __raylist_self_list__ , int idx)
 {
 	if(__raylist_self_list__ == NULL){
-		status = LIST_EMPTY;
-		return NULL;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
 	}
 	if(idx > __raylist_self_global_count__[__raylist_self_index] || idx < 0){
-		status = LIST_INDEX_OUT_OF_RANGE;
-		return NULL;
+		__raylist___self__status__ = LIST_INDEX_OUT_OF_RANGE;
+		return __raylist__impl__result(NULL);
 	}
 	__List* local_list = __raylist_self_list__;
-	status = FINE;
+	__raylist___self__status__ = FINE;
 	while(local_list != NULL){
 		if((local_list)->index == idx){	
-			return (local_list)->data;
-			break;
+			return __raylist__impl__result((local_list)->data);
 		}
 		local_list = (local_list)->next;
 	}
-	status = NULL_VALUE;
-	return NULL;
+	__raylist___self__status__ = NULL_VALUE;
+	return __raylist__impl__result(NULL);
 }
-RLLOCAL void* __raylist_self_list_get__(int idx){
+RLLOCAL RLResult __raylist_self_list_get__(int idx){
 	return __raylist_self_local_list_get__(__raylist_self_list__[__raylist_self_index] , idx);
 }
-RLLOCAL RLBOOL __raylist_self_local_list_search__(
+RLLOCAL RLResult __raylist_self_local_list_search__(
 		__List* __raylist_self_list__,
-		int* idx ,
 		Type type ,
 		void* data
 )
 {
 	__List* ___temp = __raylist_self_list__;
 	if(___temp == NULL){
-		status = LIST_EMPTY;
-		return false;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result((void*)-1);
 	}
-	status = FINE;
+	__raylist___self__status__ = FINE;
 	while(___temp != NULL){
 		switch(type){
 			case RL_STR :{
-				if(data == ___temp->data){
-					if(idx != NULL)
-						*idx = ___temp->index ;
-					return true;
+				if(strcmp((char*)data ,(char*) ___temp->data) == 0){
+					return __raylist__impl__result((void*)(intptr_t)___temp->index);
 				}
 			}break;
 			case RL_CHR :
 			case RL_INT:{
 				if(*((int*)data) == (*(int*)___temp->data)){
-					if(idx != NULL)
-						*idx = ___temp->index ;
-				 	return true;
+					return __raylist__impl__result((void*)(intptr_t)___temp->index);
 				}
 			}break;
 			case RL_FLT: {
 				if(*(float*)data == *(float*)___temp->data){
-					if(idx != NULL)
-						*idx = ___temp->index ;
-				 	return true;
+					return __raylist__impl__result((void*)(intptr_t)___temp->index);
 				}
 			}break;
 			case RL_BOOL:{
 				if(*(RLBOOL*)data){
-					if(idx != NULL)
-						*idx = ___temp->index ;
-				 	return true;
+					return __raylist__impl__result((void*)(intptr_t)___temp->index);
 				}
 			}break;
 			default : {
@@ -1733,23 +1882,23 @@ RLLOCAL RLBOOL __raylist_self_local_list_search__(
 		}
 		___temp = ___temp->next;
 	}
-	return false;
+	__raylist___self__status__ = LIST_SEARCH_DATA_NOTFOUND;
+	return __raylist__impl__result((void*)-1);
 }
-RLLOCAL RLBOOL __raylist_self_list_search__(
-		int* idx ,
+RLLOCAL RLResult __raylist_self_list_search__(
 		Type type ,
 		void* data
 	     )
 {
-	return __raylist_self_local_list_search__(__raylist_self_list__[__raylist_self_index] , idx , type , data);
+	return __raylist_self_local_list_search__(__raylist_self_list__[__raylist_self_index] , type , data);
 }
-RLLOCAL void __raylist_self_local_list_reverse__(__List** __raylist_self_list__)
+RLLOCAL RLResult __raylist_self_local_list_reverse__(__List** __raylist_self_list__)
 {
 	if((*__raylist_self_list__) == NULL){
-		status = LIST_EMPTY;
-		return;
+		__raylist___self__status__ = LIST_EMPTY;
+		return __raylist__impl__result(NULL);
 	}
-	status = FINE;
+	__raylist___self__status__ = FINE;
 	__List* prev = NULL; 
 	__List* current = *__raylist_self_list__; 
 	__List* next = NULL; 
@@ -1761,19 +1910,20 @@ RLLOCAL void __raylist_self_local_list_reverse__(__List** __raylist_self_list__)
 	} 
 	*__raylist_self_list__ = prev; 
 	revesed = !revesed;
+	return __raylist__impl__result(NULL);
 }
-void __raylist_self_list_reverse__(){
+RLResult  __raylist_self_list_reverse__(void){
 	__raylist_self_local_list_reverse__(&__raylist_self_list__[__raylist_self_index]);
 }
 void __raylist_self_list_print__()
 {
 	if(__raylist_self_list__[__raylist_self_index] == NULL){	
 		printf("[NULL]");
-		status = LIST_EMPTY;
+		__raylist___self__status__ = LIST_EMPTY;
 		return ;
 	}
 	__List* local_list = __raylist_self_list__[__raylist_self_index];
-	status = FINE;
+	__raylist___self__status__ = FINE;
 	printf("[\n");
 	while(local_list != NULL){
 		switch((local_list)->type){
@@ -1818,6 +1968,48 @@ void __raylist_self_list_print__()
 		if((local_list) != NULL)	printf(",");
 	}
 	printf("\n]\n");
+}
+
+RLList __raylist__init__list__impl(RLList* cl){
+#ifndef USING_LIST
+	cl->List_All = __raylist_self_list_all__;
+	cl->List_Any = __raylist_self_list_any__;
+
+	cl->List_Is_Empty = __raylist_self_is_empty__;
+	cl->List_Insert = __raylist_self_list_insert__;
+	cl->List_Append = __raylist_self_list_append__;
+	cl->List_Del_Index = __raylist_self_delete__;
+	cl->List_Get = __raylist_self_list_get__;
+	cl->List_Search = __raylist_self_list_search__;
+	cl->List_Reverse = __raylist_self_list_reverse__;
+	cl->List_Print = __raylist_self_list_print__;
+	cl->List_Exec_Sync = __raylist_self_exec__;
+	cl->List_Clear = __raylist_self_clear__;
+	cl->List_Get_Error = __raylist_self_get_error__;
+	cl->List_Filter = __raylist_self_filter__;
+	cl->List_Map = __raylist_self_list_map__;
+	cl->List_Exec_Async = __raylist_self_list_exec_async__;
+	cl->List_Len = __raylist_self_list_len__;
+#else
+	cl->All = __raylist_self_list_all__;
+	cl->Any = __raylist_self_list_any__;
+
+	cl->Insert = __raylist_self_list_insert__;
+	cl->Append = __raylist_self_list_append__;
+	cl->Del_Index = __raylist_self_delete__;
+	cl->Get = __raylist_self_list_get__;
+	cl->Search = __raylist_self_list_search__;
+	cl->Reverse = __raylist_self_list_reverse__;
+	cl->Print = __raylist_self_list_print__;
+	cl->Exec_Sync = __raylist_self_exec__;
+	cl->Clear = __raylist_self_clear__;
+	cl->Get_Error = __raylist_self_get_error__;
+	cl->Filter = __raylist_self_filter__;
+	cl->Map = __raylist_self_list_map__;
+	cl->Exec_Async = __raylist_self_list_exec_async__;
+	cl->Len = __raylist_self_list_len__;
+#endif
+	return *cl;
 }
 
 RLList List(int count , ...)
@@ -1887,47 +2079,9 @@ RLList List(int count , ...)
 		}
 		c++;
 	}
-	if(c == 0)	status = LIST_EMPTY;
+	if(c == 0)	__raylist___self__status__ = LIST_EMPTY;
 	va_end(args);
-#ifndef USING_LIST
-	cl.List_All = __raylist_self_list_all__;
-	cl.List_Any = __raylist_self_list_any__;
-
-	cl.List_Is_Empty = __raylist_self_is_empty__;
-	cl.List_Insert = __raylist_self_list_insert__;
-	cl.List_Append = __raylist_self_list_append__;
-	cl.List_Del_Index = __raylist_self_delete__;
-	cl.List_Get = __raylist_self_list_get__;
-	cl.List_Search = __raylist_self_list_search__;
-	cl.List_Reverse = __raylist_self_list_reverse__;
-	cl.List_Print = __raylist_self_list_print__;
-	cl.List_Exec_Sync = __raylist_self_exec__;
-	cl.List_Clear = __raylist_self_clear__;
-	cl.List_Get_Error = __raylist_self_get_error__;
-	cl.List_Filter = __raylist_self_filter__;
-	cl.List_Map = __raylist_self_list_map__;
-	cl.List_Exec_Async = __raylist_self_list_exec_async__;
-	cl.List_Len = __raylist_self_list_len__;
-#else
-	cl.All = __raylist_self_list_all__;
-	cl.Any = __raylist_self_list_any__;
-
-	cl.Insert = __raylist_self_list_insert__;
-	cl.Append = __raylist_self_list_append__;
-	cl.Del_Index = __raylist_self_delete__;
-	cl.Get = __raylist_self_list_get__;
-	cl.Search = __raylist_self_list_search__;
-	cl.Reverse = __raylist_self_list_reverse__;
-	cl.Print = __raylist_self_list_print__;
-	cl.Exec_Sync = __raylist_self_exec__;
-	cl.Clear = __raylist_self_clear__;
-	cl.Get_Error = __raylist_self_get_error__;
-	cl.Filter = __raylist_self_filter__;
-	cl.Map = __raylist_self_list_map__;
-	cl.Exec_Async = __raylist_self_list_exec_async__;
-	cl.Len = __raylist_self_list_len__;
-#endif
-	return cl;
+	return __raylist__init__list__impl(&cl);
 }
 
 RLLOCAL RLCollections __init_raylist_collection_start__(int buffer)
