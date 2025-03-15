@@ -25,11 +25,15 @@
 #define LIST_H
 #define LIST_INCLUDED 
 
-// TODO: add trees
-// TODO: add graphs
-// TODO: add string interface
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// to check if raylist is included
+#ifdef _WIN32
+#define RLLAPI  __declspec(dllexport)
+#else
+#define RLLAPI
+#endif
 
 // 	typeof pragma returns string contained type of variable
 // 	Example :
@@ -79,9 +83,15 @@
  * */
 #define RLLOCAL	static
 
+#define RLINLINE	inline
+
 /*
  *	check if standerd libc is included
  * */
+
+#if !defined(_STDIO_H)
+#include <stdio.h>
+#endif
 
 #if !defined(__CLANG_STDINT_H)
 #include <stdint.h>
@@ -404,10 +414,15 @@ typedef enum {
  *	*/
 #define interface 		struct
 
+typedef interface RLList RLList;
+typedef interface IfaceThread IfaceThread;
+typedef interface RLResult RLResult;
+typedef interface RLCollections RLCollections ;
+
 /*
  *	interface for manipulate thread handle 
  * */
-typedef interface {
+interface IfaceThread{
 	// the thread in it self
 	RLAPIThread thread;
 	/*
@@ -420,7 +435,7 @@ typedef interface {
 	 *	abstarct function for killing the thread
 	 * */
 	void (*Kill)(RLAPIThread thread);
-}IfaceThread;
+};
 
 /*
  *	this for limit size of stack or queue
@@ -443,7 +458,7 @@ RLLOCAL RLBOOL __raylist_limit_buf__	= false;
 
 RLLOCAL void* __raylist__returned_data__ = NULL;
 
-typedef interface{
+interface RLResult{
 	/*
 	 *  MapError method used for handling error
 	 * */
@@ -472,11 +487,12 @@ typedef interface{
 	 * */
 	void* (*GetData)(void);
 
-}RLResult;
+};
+
 
 // NOTE: this interface can anyone implements thiere functions
 // NOTE: raylist use List and Stack and Queue function to implement this functions
-typedef interface {
+interface RLList{
 #ifndef USING_LIST
 	/*
 	 *	Any
@@ -886,11 +902,11 @@ typedef interface {
 	 * */
 	int (*Len)(void);
 #endif
-}RLList;
+};
 
 // RLCollections interface 
 // contains all method , push pop and more for stack and queue data structure
-typedef interface {
+interface RLCollections{
 	/*
 	 *	Max_Buffer() return true if __raylist__buf__ equal to fixed __raylist__buf__ else false
 	 * */
@@ -945,20 +961,122 @@ typedef interface {
 			void
 	);
 
-}RLCollections;
+};
 
-//String str(string str);
-
-RLList List(
+RLLAPI RLList List(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
 );
 
-RLCollections Stack(int buffer_size);
+RLLAPI RLCollections Stack(int buffer_size);
 
-RLCollections Queue(int buffer_size);
+RLLAPI RLCollections Queue(int buffer_size);
+
+// TODO: add temp allocation
+#define ___CAPACITY_MAX 	32
+void* __raylist__table__stock__memory__[___CAPACITY_MAX] = {0};
+int  _____raylist_index = 0;
+
+void* __raylist__local__temp__int(int value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(int));
+		*(int*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__float(float value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(float));
+		*(float*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__short(short value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(short));
+		*(short*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__long(long value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(long));
+		*(long*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__char(char value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(char));
+		*(char*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__double(double value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(double));
+		*(double*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+void* __raylist__local__temp__bool(bool value){
+	if(_____raylist_index < ___CAPACITY_MAX){
+		__raylist__table__stock__memory__[_____raylist_index] = RLALLOC(RLSIZEOF(bool));
+		*(bool*)__raylist__table__stock__memory__[_____raylist_index] = value;
+		return __raylist__table__stock__memory__[_____raylist_index++];
+	}
+	return NULL;
+}
+
+#define RLTempalloc(v) _Generic((v) , 			\
+	int : __raylist__local__temp__int,		\
+	double : __raylist__local__temp__double,	\
+	short : __raylist__local__temp__short,		\
+	long : __raylist__local__temp__long,		\
+	char : __raylist__local__temp__char,		\
+	bool : __raylist__local__temp__bool,		\
+	float : __raylist__local__temp__float		\
+		)(v)
+
+void __raylist__temp_default_clear(void){
+	for(int i = 0 ; i < ___CAPACITY_MAX ; i++)
+	{
+		if(__raylist__table__stock__memory__[i] != NULL){
+			RLFREE(__raylist__table__stock__memory__[i]);
+		}
+	}
+}
+
+#define RLTempallocClear()							\
+	do{									\
+		for(int i = 0 ; i < ___CAPACITY_MAX ; i++)			\
+		{								\
+			if(__raylist__table__stock__memory__[i] != NULL){	\
+				RLFREE(__raylist__table__stock__memory__[i]);	\
+			}							\
+		}								\
+	}while(0)
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
+
+// LIST_C implementation of interfaces 
 
 #ifdef LIST_C
 
@@ -1338,6 +1456,11 @@ RLLOCAL RLResult  __raylist_self_list_insert__(int idx , Type type , void* data)
 		}												\
 	}while(0)
 
+// TODO: forearch
+//#define RLForEach(init , llist)			\
+//	int i = 0;			\
+//	for((init) = llist.Get(i).GetData(); i < (llist).Len() ; i++)
+
 RLLOCAL void __raylist_self_list_append__(
 		Type type,
 		void* data
@@ -1390,6 +1513,7 @@ RLLOCAL BOOL WINAPI ctrl_c_raylist_handler(DWORD sig)
 	if(sig == CTRL_C_EVENT)
 	{
 		__raylist_self_clear__();
+		__raylist__temp_default_clear();
 		exit(0);
 	}
 	return 0;
@@ -1398,7 +1522,9 @@ RLLOCAL BOOL WINAPI ctrl_c_raylist_handler(DWORD sig)
 
 RLLOCAL inline void ctrl_c_raylist_handler(int sig)
 {
+	RLUNUSED(sig);
 	__raylist_self_clear__();
+	__raylist__temp_default_clear();
 	exit(0);
 }
 #endif
@@ -1733,7 +1859,7 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 }
 RLLOCAL RLResult __raylist_self_delete__(int idx)
 {
-	__raylist_self_local_delete__(&__raylist_self_list__[__raylist_self_index] , idx);
+	return __raylist_self_local_delete__(&__raylist_self_list__[__raylist_self_index] , idx);
 }
 
 RLLOCAL RLResult __raylist_self_filter__(FILTERCALLBACK callback , Type type , Filter_Flag flag){

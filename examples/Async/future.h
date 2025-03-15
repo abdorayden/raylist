@@ -204,7 +204,7 @@ void FutureLoop(FutureOnData work , FutureOnErr logerr)
 	// while FutureQueue is not empty
 	while (!FutureQueue.Is_Empty()) {
 		// pop the unit task
-		curr = (Future*)FutureQueue.Pop();
+		curr = (Future*)FutureQueue.Pop().GetData();
 		HandlFuture handle = curr->poll((void*)curr->data);
 		// call function and check if function finished or not
 		// TODO: done
