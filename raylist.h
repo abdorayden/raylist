@@ -397,16 +397,16 @@ typedef void (*MAPDATACALLBACK)(void*);
 // Exec function Flag
 typedef enum {
 	/* return value from Exec function
-	 * OUTT flag is not enabled if index parameter in Exec_Sync was out of range
+	 * RL_OUT flag is not enabled if index parameter in Exec_Sync was out of range
 	 * */ 
-	OUTT, 
+	RL_OUT, 
 	/* the return value will replace function callback index ,
 	* the function Exec will run all function 
 	* the void function is not replaced 
 	* */
-	INPLACE,  
+	RL_INPLACE,  
 	/* the function return value will added to the list */
-	ADDED
+	RL_ADDED
 }Exec_Flag;
 
 /*	definitions 
@@ -972,7 +972,6 @@ RLLAPI RLCollections Stack(int buffer_size);
 
 RLLAPI RLCollections Queue(int buffer_size);
 
-// TODO: add temp allocation
 #define ___CAPACITY_MAX 	32
 void* __raylist__table__stock__memory__[___CAPACITY_MAX] = {0};
 int  _____raylist_index = 0;
@@ -1077,7 +1076,6 @@ void __raylist__temp_default_clear(void){
 #endif
 
 // LIST_C implementation of interfaces 
-
 #ifdef LIST_C
 
 RLLOCAL inline void __raylist__result__maperror__(MAPERRORCALLBACK func)
@@ -1456,11 +1454,6 @@ RLLOCAL RLResult  __raylist_self_list_insert__(int idx , Type type , void* data)
 		}												\
 	}while(0)
 
-// TODO: forearch
-//#define RLForEach(init , llist)			\
-//	int i = 0;			\
-//	for((init) = llist.Get(i).GetData(); i < (llist).Len() ; i++)
-
 RLLOCAL void __raylist_self_list_append__(
 		Type type,
 		void* data
@@ -1496,11 +1489,14 @@ RLLOCAL void __raylist_self_clear__(void){
 	for(int x = 0 ; x < __raylist_self_index ; x++){
 		__List* current = __raylist_self_list__[x];
 		__List* temp;
-		while (current != NULL) {
-			temp = current->next; 
-			RLFREE(current);        
-			current = temp;       
+		// TODO: check clean up again
+		while (current) {
+			temp = current; 
+			current = current->next;
+			RLFREE(temp->data);        
+			RLFREE(temp);        
 		}
+		__raylist_self_list__[x] = NULL;
 	}
 	__raylist__init_interfaces__();
 	revesed = false;
@@ -1546,25 +1542,25 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 	if(idx < 0){
 		while(__raylist_self_list__ != NULL){
 			switch((__raylist_self_list__)->type){
-				// NOTE : OUTT flag will not work in that case
+				// NOTE : RL_OUT flag will not work in that case
 				// return value will block the loop
 				case  RL_VOIDPTRFUNC:{
 					if(data == NULL){
 						void* (*call)() = (void*(*)())(__raylist_self_list__)->data;
-						if(flag == INPLACE){
+						if(flag == RL_INPLACE){
 							__raylist_self_list__->type = RL_VOIDPTR;
 							__raylist_self_list__->data = (void*)call();
-						}else if(flag == ADDED)
+						}else if(flag == RL_ADDED)
 						{
 							__raylist_self_list_append__(RL_VOIDPTR , (void*)call());
 						}
 						call();
 					}else{
 						void* (*call)(void*) = (void*(*)(void*))(__raylist_self_list__)->data;
-						if(flag == INPLACE){
+						if(flag == RL_INPLACE){
 							__raylist_self_list__->type = RL_VOIDPTR;
 							__raylist_self_list__->data = (void*)call(data);
-						}else if(flag == ADDED)
+						}else if(flag == RL_ADDED)
 						{
 							__raylist_self_list_append__(RL_VOIDPTR , (void*)call(data));
 						}
@@ -1574,17 +1570,17 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 				case  RL_VOIDFUNC:{
 					if(data == NULL){
 						void (*call)() = (void(*)())(__raylist_self_list__)->data;
-						if(flag == INPLACE){
+						if(flag == RL_INPLACE){
 							__raylist_self_list__->type = RL_VOIDPTR;
 							__raylist_self_list__->data = NULL;
-						}else if(flag == ADDED)
+						}else if(flag == RL_ADDED)
 						{
 							__raylist_self_list_append__(RL_VOIDPTR , NULL);
 						}
 						call();
 					}else{
 						void (*call)(void*) = (void(*)(void*))(__raylist_self_list__)->data;
-						if(flag == INPLACE){
+						if(flag == RL_INPLACE){
 							__raylist_self_list__->type = RL_VOIDPTR;
 							__raylist_self_list__->data = NULL;
 						}
@@ -1594,7 +1590,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 				case RL_CHARFUNC : {
 					if(data == NULL){
 						char* (*call)() = ((char*(*)())(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_CHR;
 							__raylist_self_list__->data = (char*)call();
 						}else{
@@ -1602,7 +1598,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						}
 					}else{
 						char* (*call)(void*) = ((char*(*)(void*))(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_CHR;
 							__raylist_self_list__->data = (char*)call(data);
 						}else{
@@ -1613,7 +1609,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 				case RL_INTFUNC : {
 					if(data == NULL){
 						int* (*call)() = ((int*(*)())(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_INT;
 							__raylist_self_list__->data = (int*)call();
 						}else{
@@ -1621,7 +1617,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						}
 					}else{
 						int* (*call)(void*) = ((int*(*)(void*))(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_INT;
 							__raylist_self_list__->data = (int*)call(data);
 						}else{
@@ -1632,7 +1628,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 				case RL_STRFUNC : {
 					if(data == NULL){
 						string (*call)() = ((string(*)())(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_STR;
 							__raylist_self_list__->data = (string)call();
 						}else{
@@ -1640,7 +1636,7 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						}
 					}else{
 						string (*call)(void*) = ((string(*)(void*))(__raylist_self_list__)->data);
-						if(flag == INPLACE) {
+						if(flag == RL_INPLACE) {
 							__raylist_self_list__->type = RL_STR;
 							__raylist_self_list__->data = (string)call(data);
 						}else{
@@ -1662,10 +1658,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 					case  RL_VOIDPTRFUNC:{
 					     if(data == NULL){
 						     void* (*call)() = (void*(*)())(__raylist_self_list__)->data;
-						     if(flag == OUTT){
+						     if(flag == RL_OUT){
 							     return __raylist__impl__result((void*)call());
 						     }
-						     else if(flag == INPLACE){
+						     else if(flag == RL_INPLACE){
 							     __raylist_self_list__->type = RL_VOIDPTR;
 							     __raylist_self_list__->data = (void*)call();
 						     }else
@@ -1675,10 +1671,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						     return __raylist__impl__result(NULL);
 					     }else{
 						     void* (*call)(void*) = (void*(*)(void*))(__raylist_self_list__)->data;
-						     if(flag == OUTT){
+						     if(flag == RL_OUT){
 							     return __raylist__impl__result((void*)call(data));
 						     }
-						     else if(flag == INPLACE){
+						     else if(flag == RL_INPLACE){
 							     __raylist_self_list__->type = RL_VOIDPTR;
 							     __raylist_self_list__->data = (void*)call(data);
 						     }else
@@ -1691,9 +1687,9 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 					case RL_STRFUNC : {
 						if(data == NULL){
 							string (*call)() = ((string(*)())(__raylist_self_list__)->data);
-							if(flag == OUTT)
+							if(flag == RL_OUT)
 						     		return __raylist__impl__result((string)call());
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_STR;
 								__raylist_self_list__->data = (string)call();
 							}else{
@@ -1702,10 +1698,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						     	return __raylist__impl__result(NULL);
 						}else{
 							string (*call)(void*) = ((string(*)(void*))(__raylist_self_list__)->data);
-							if(flag == OUTT){
+							if(flag == RL_OUT){
 						     		return __raylist__impl__result((string)call(data));
 							}
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_STR;
 								__raylist_self_list__->data = (char*)call(data);
 							}else{
@@ -1719,10 +1715,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						// 		declare global variable or declare it as static
 						if(data == NULL){
 							char* (*call)() = ((char*(*)())(__raylist_self_list__)->data);
-							if(flag == OUTT){
+							if(flag == RL_OUT){
 						     		return __raylist__impl__result((void*)call());
 							}
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_CHR;
 								__raylist_self_list__->data = (char*)call();
 							}else{
@@ -1731,10 +1727,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						     	return __raylist__impl__result(NULL);
 						}else{
 							char* (*call)(void*) = ((char*(*)(void*))(__raylist_self_list__)->data);
-							if(flag == OUTT){
+							if(flag == RL_OUT){
 						     		return __raylist__impl__result((void*)call(data));
 							}
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_INT;
 								__raylist_self_list__->data = (char*)call(data);
 							}else{
@@ -1748,10 +1744,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						// 		declare global variable or declare it as static
 						if(data == NULL){
 							int* (*call)() = ((int*(*)())(__raylist_self_list__)->data);
-							if(flag == OUTT){
+							if(flag == RL_OUT){
 						     		return __raylist__impl__result((void*)call());
 							}
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_INT;
 								__raylist_self_list__->data = (int*)call();
 							}else{
@@ -1760,10 +1756,10 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 						     	return __raylist__impl__result(NULL);
 						}else{
 							int* (*call)(void*) = ((int*(*)(void*))(__raylist_self_list__)->data);
-							if(flag == OUTT){
+							if(flag == RL_OUT){
 						     		return __raylist__impl__result((void*)call(data));
 							}
-							else if(flag == INPLACE) {
+							else if(flag == RL_INPLACE) {
 								__raylist_self_list__->type = RL_INT;
 								__raylist_self_list__->data = (int*)call(data);
 							}else{
@@ -1775,17 +1771,17 @@ RLLOCAL RLResult __raylist_self_local_exec__(__List* __raylist_self_list__ ,int 
 					case  RL_VOIDFUNC:{
 						  if(data == NULL){
 							  void (*call)() = (void(*)())(__raylist_self_list__)->data;
-							  if(flag == INPLACE){
+							  if(flag == RL_INPLACE){
 								  __raylist_self_list__->type = RL_VOIDPTR;
 								  __raylist_self_list__->data = NULL;
-							  }else if(flag == ADDED)
+							  }else if(flag == RL_ADDED)
 							  {
 								  __raylist_self_list_append__(RL_VOIDPTR , NULL);
 							  }
 							  call();
 						}else{
 							  void (*call)(void*) = (void(*)(void*))(__raylist_self_list__)->data;
-							  if(flag == INPLACE){
+							  if(flag == RL_INPLACE){
 								  __raylist_self_list__->type = RL_VOIDPTR;
 								  __raylist_self_list__->data = NULL;
 							  }
@@ -1828,6 +1824,8 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 	__List* prev = NULL;
 	if (___temp != NULL && ___temp->index == idx) {
 	    *__raylist_self_list__ = ___temp->next;
+	    // TODO: make sure that the data is also freed
+	    RLFREE(___temp->data);
 	    RLFREE(___temp);
 	    ___temp = *__raylist_self_list__;
 	    while(___temp != NULL && revesed){
@@ -1847,6 +1845,8 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 		return __raylist__impl__result(NULL);
 	}
 	prev->next = ___temp->next;
+	// TODO: make sure that the data is also freed
+	RLFREE(___temp->data);
 	RLFREE(___temp);
 	___temp = prev->next;
 	while(revesed && ___temp != NULL && ___temp->index > 0){
