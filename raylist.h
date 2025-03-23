@@ -327,8 +327,8 @@ RLLOCAL int __raylist_self_global_count__[LIST_MAX];
 
 // filter callback function 
 typedef enum{
-	ALL = 0xFF,  	// delete all types 
-	ONLY		// only type
+	RL_ALL = 0xFF,  	// delete all types 
+	RL_ONLY		// only type
 }Filter_Flag;
 
 typedef RLBOOL (*FILTERCALLBACK)(void*);
@@ -963,6 +963,39 @@ interface RLCollections{
 
 };
 
+/*
+ *	it's like List_Append but use generic so you can add value directly without reference
+ * */
+#define RLAppend(t , d) _Generic((d) , 		\
+			int : add_int,		\
+			char : add_char,	\
+			float : add_float,	\
+			default : add_voidptr		\
+		)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);
+
+#define RLPush(t , d) 												\
+	do{													\
+		if(__raylist_limit_buf__){											\
+			if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__){							\
+				_Generic((d) ,	 								\
+					int : add_int,								\
+					char : add_char,							\
+					float : add_float,							\
+					default : add_voidptr							\
+				)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);			\
+			}else{											\
+				__raylist___self__status__ = RLCOLLENCTIONS_MAX__BUFFER;			\
+			}											\
+		}else{												\
+				_Generic((d) ,	 								\
+					int : add_int,								\
+					char : add_char,							\
+					float : add_float,							\
+					default : add_voidptr							\
+				)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);			\
+		}												\
+	}while(0)
+
 RLLAPI RLList List(
 		int count , 	// number of data you
 		... 		// data : <TYPE> , <VALUE>
@@ -974,6 +1007,37 @@ RLLAPI RLCollections Queue(int buffer_size);
 
 #define ___CAPACITY_MAX 	32
 void* __raylist__table__stock__memory__[___CAPACITY_MAX] = {0};
+
+#define RLTempalloc(v) _Generic((v) , 			\
+	int : __raylist__local__temp__int,		\
+	double : __raylist__local__temp__double,	\
+	short : __raylist__local__temp__short,		\
+	long : __raylist__local__temp__long,		\
+	char : __raylist__local__temp__char,		\
+	bool : __raylist__local__temp__bool,		\
+	float : __raylist__local__temp__float		\
+		)(v)
+
+#define RLTempallocClear()							\
+	do{									\
+		for(int i = 0 ; i < ___CAPACITY_MAX ; i++)			\
+		{								\
+			if(__raylist__table__stock__memory__[i] != NULL){	\
+				RLFREE(__raylist__table__stock__memory__[i]);	\
+			}							\
+		}								\
+	}while(0)
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+// LIST_C implementation of interfaces 
+#ifdef LIST_C
+
 int  _____raylist_index = 0;
 
 void* __raylist__local__temp__int(int value){
@@ -1039,16 +1103,6 @@ void* __raylist__local__temp__bool(bool value){
 	return NULL;
 }
 
-#define RLTempalloc(v) _Generic((v) , 			\
-	int : __raylist__local__temp__int,		\
-	double : __raylist__local__temp__double,	\
-	short : __raylist__local__temp__short,		\
-	long : __raylist__local__temp__long,		\
-	char : __raylist__local__temp__char,		\
-	bool : __raylist__local__temp__bool,		\
-	float : __raylist__local__temp__float		\
-		)(v)
-
 void __raylist__temp_default_clear(void){
 	for(int i = 0 ; i < ___CAPACITY_MAX ; i++)
 	{
@@ -1058,25 +1112,6 @@ void __raylist__temp_default_clear(void){
 	}
 }
 
-#define RLTempallocClear()							\
-	do{									\
-		for(int i = 0 ; i < ___CAPACITY_MAX ; i++)			\
-		{								\
-			if(__raylist__table__stock__memory__[i] != NULL){	\
-				RLFREE(__raylist__table__stock__memory__[i]);	\
-			}							\
-		}								\
-	}while(0)
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-// LIST_C implementation of interfaces 
-#ifdef LIST_C
 
 RLLOCAL inline void __raylist__result__maperror__(MAPERRORCALLBACK func)
 {
@@ -1421,38 +1456,6 @@ RLLOCAL RLResult  __raylist_self_list_insert__(int idx , Type type , void* data)
 }
 
 
-/*
- *	it's like List_Append but use generic so you can add value directly without reference
- * */
-#define RLAppend(t , d) _Generic((d) , 		\
-			int : add_int,		\
-			char : add_char,	\
-			float : add_float,	\
-			default : add_voidptr		\
-		)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);
-
-#define RLPush(t , d) 												\
-	do{													\
-		if(__raylist_limit_buf__){											\
-			if(__raylist_self_global_count__[__raylist_self_index] < __raylist__buf__){							\
-				_Generic((d) ,	 								\
-					int : add_int,								\
-					char : add_char,							\
-					float : add_float,							\
-					default : add_voidptr							\
-				)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);			\
-			}else{											\
-				__raylist___self__status__ = RLCOLLENCTIONS_MAX__BUFFER;			\
-			}											\
-		}else{												\
-				_Generic((d) ,	 								\
-					int : add_int,								\
-					char : add_char,							\
-					float : add_float,							\
-					default : add_voidptr							\
-				)(&__raylist_self_list__[__raylist_self_index] , d , t  , __raylist_self_global_count__[__raylist_self_index]++);			\
-		}												\
-	}while(0)
 
 RLLOCAL void __raylist_self_list_append__(
 		Type type,
@@ -1871,7 +1874,7 @@ RLLOCAL RLResult __raylist_self_filter__(FILTERCALLBACK callback , Type type , F
 					return __raylist__impl__result(NULL);
 				}
 			}
-		}else if(flag == ALL){
+		}else if(flag == RL_ALL){
 			if(__raylist_self_delete__(___temp->index).IsError()){
 				return __raylist__impl__result(NULL);
 			}
