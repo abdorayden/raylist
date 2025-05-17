@@ -259,14 +259,16 @@ typedef string 	(*STRINGFUNCTION 	)(void*);
  *		next  : pointing to next list
  * */
 
-struct list {
+// TODO: fix complexity problem in list structure
+typedef struct _____list__ __List;
+
+struct _____list__ {
 	int 		index;
 	Type 		type ;
 	void* 		data ;
-	struct list* 	next ;
+	RLBOOL		owned;
+	struct _____list__* 	next ;
 };
-
-typedef struct list __List;
 
 #ifndef LIST_MAX
 #define LIST_MAX 10
@@ -1024,10 +1026,11 @@ void* __raylist__table__stock__memory__[___CAPACITY_MAX] = {0};
 		{								\
 			if(__raylist__table__stock__memory__[i] != NULL){	\
 				RLFREE(__raylist__table__stock__memory__[i]);	\
+				__raylist__table__stock__memory__[i] = NULL;	\
 			}							\
 		}								\
+		_____raylist_index = 0;						\
 	}while(0)
-
 
 #ifdef __cplusplus
 }
@@ -1228,15 +1231,18 @@ RLLOCAL void add_voidptr(
 		__raylist___self__status__ = LIST_MEMALLOC;
 		return;
 	}
+	temp->owned = enable_copy;
 	if(!enable_copy)
 		temp->data = val;  
 	else {
-		temp->data = RLALLOC(copy_size + 1);
-		RLMEMCPY(temp->data , val , copy_size + 1);
+		// temp->data = RLALLOC(copy_size + 1);
+		// RLMEMCPY(temp->data , val , copy_size + 1);
+		temp->data = RLALLOC(copy_size);
+		RLMEMCPY(temp->data , val , copy_size);
 	}
 	temp->type = t;                 
 	temp->index = idx;              
-	temp->next = *__raylist_self_list__;                
+	temp->next = *__raylist_self_list__;
 	*__raylist_self_list__ = temp;                      
 }
 RLLOCAL void add_int(
@@ -1255,6 +1261,7 @@ RLLOCAL void add_int(
 	*(int*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
+	temp->owned = true;
 	temp->next = *__raylist_self_list__;                
 	*__raylist_self_list__ = temp;                      
 }
@@ -1275,6 +1282,7 @@ RLLOCAL void add_char(
 	*(char*)temp->data = val;
 	temp->type = t;                 
 	temp->index = idx;              
+	temp->owned = true;
 	temp->next = *__raylist_self_list__;                
 	*__raylist_self_list__ = temp;                      
 }
@@ -1295,6 +1303,7 @@ RLLOCAL void add_float(
 	*(float*)(temp->data) = val;
 	temp->type = t;                 
 	temp->index = idx;              
+	temp->owned = true;
 	temp->next = *__raylist_self_list__;                
 	*__raylist_self_list__ = temp;                      
 }
@@ -1489,17 +1498,21 @@ RLLOCAL RLResult __raylist_self_push__(
 }
 
 RLLOCAL void __raylist_self_clear__(void){
-	for(int x = 0 ; x < __raylist_self_index ; x++){
+	// for(int x = 0 ; x < __raylist_self_index ; x++){
+	for(int x = 0 ; x < LIST_MAX ; x++){
 		__List* current = __raylist_self_list__[x];
 		__List* temp;
 		// TODO: check clean up again
 		while (current) {
 			temp = current; 
 			current = current->next;
-			RLFREE(temp->data);        
+			if(temp->owned)
+				RLFREE(temp->data);        
 			RLFREE(temp);        
 		}
 		__raylist_self_list__[x] = NULL;
+		// TODO: rayden was here
+		__raylist_self_global_count__[x] = 0;
 	}
 	__raylist__init_interfaces__();
 	revesed = false;
@@ -1828,7 +1841,9 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 	if (___temp != NULL && ___temp->index == idx) {
 	    *__raylist_self_list__ = ___temp->next;
 	    // TODO: make sure that the data is also freed
-	    RLFREE(___temp->data);
+	    // TODO: rayden was here
+	    if(___temp->owned)
+		    RLFREE(___temp->data);
 	    RLFREE(___temp);
 	    ___temp = *__raylist_self_list__;
 	    while(___temp != NULL && revesed){
@@ -1888,7 +1903,12 @@ RLLOCAL void __raylist_self_list_map__(MAPCALLBACK callback , Type type){
 	__List* ___temp = __raylist_self_list__[__raylist_self_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
+			// TODO: rayden was here
+			void* old_ptr = ___temp->data;
 			___temp->data = callback(___temp->data);
+			if(___temp->owned)
+				RLFREE(old_ptr);
+			___temp->owned = true;
 		}
 		___temp = ___temp->next;
 	}
