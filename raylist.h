@@ -1498,11 +1498,9 @@ RLLOCAL RLResult __raylist_self_push__(
 }
 
 RLLOCAL void __raylist_self_clear__(void){
-	// for(int x = 0 ; x < __raylist_self_index ; x++){
 	for(int x = 0 ; x < LIST_MAX ; x++){
 		__List* current = __raylist_self_list__[x];
 		__List* temp;
-		// TODO: check clean up again
 		while (current) {
 			temp = current; 
 			current = current->next;
@@ -1511,7 +1509,6 @@ RLLOCAL void __raylist_self_clear__(void){
 			RLFREE(temp);        
 		}
 		__raylist_self_list__[x] = NULL;
-		// TODO: rayden was here
 		__raylist_self_global_count__[x] = 0;
 	}
 	__raylist__init_interfaces__();
@@ -1840,8 +1837,6 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 	__List* prev = NULL;
 	if (___temp != NULL && ___temp->index == idx) {
 	    *__raylist_self_list__ = ___temp->next;
-	    // TODO: make sure that the data is also freed
-	    // TODO: rayden was here
 	    if(___temp->owned)
 		    RLFREE(___temp->data);
 	    RLFREE(___temp);
@@ -1863,7 +1858,6 @@ RLLOCAL RLResult __raylist_self_local_delete__(
 		return __raylist__impl__result(NULL);
 	}
 	prev->next = ___temp->next;
-	// TODO: make sure that the data is also freed
 	RLFREE(___temp->data);
 	RLFREE(___temp);
 	___temp = prev->next;
@@ -1903,7 +1897,6 @@ RLLOCAL void __raylist_self_list_map__(MAPCALLBACK callback , Type type){
 	__List* ___temp = __raylist_self_list__[__raylist_self_index];
 	while(___temp != NULL){
 		if(___temp->type == type){
-			// TODO: rayden was here
 			void* old_ptr = ___temp->data;
 			___temp->data = callback(___temp->data);
 			if(___temp->owned)
@@ -1940,7 +1933,6 @@ RLLOCAL RLResult __raylist_self_list_exec_async__(int idx , RLAPIParam data){
 
 	while(___temp != NULL)
 	{
-		// TODO: handle data type must be function
 		if(___temp->index == idx){
 			if(___temp->type < 11 && 5 > ___temp->type){
 				RLAPIThread thread = RLCreateThread(___temp->data , data);
