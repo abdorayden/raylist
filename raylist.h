@@ -507,12 +507,16 @@ interface Iterator {
 // NOTE: this interface can anyone implements thiere functions
 // NOTE: raylist use List and Stack and Queue function to implement this functions
 interface RLList{
-
-	/* return implementation of the Iterator interface */ 
-	/* how to use it */
-	/* for(Iterator it = my_list.Iter() , void* data = NULL ; it.HasNext() ; data = it.Next()){ */
-	/* 	... */
-	/* } */
+	/* return implementation of the Iterator interface 						*/ 
+	/* how to use it										*/
+	/* for(Iterator it = my_list.Iter() , void* data = NULL ; it.HasNext() ; data = it.Next()){	*/
+	/* 	...		 									*/
+	/* }		 										*/
+	/* 	for easier usage use RLForEach macro 							*/ 
+	/* 	Example:		 								*/
+	/* 		RLForEach(value , my_list){		 					*/
+	/* 			...		 							*/
+	/*	 	}		 								*/
 	Iterator (*Iter)(void);
 	/*
 	 *	Any
