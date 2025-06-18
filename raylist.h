@@ -416,10 +416,11 @@ typedef enum {
  *	*/
 #define interface 		struct
 
-typedef interface RLList RLList;
-typedef interface IfaceThread IfaceThread;
-typedef interface RLResult RLResult;
+typedef interface RLList 	RLList;
+typedef interface IfaceThread 	IfaceThread;
+typedef interface RLResult 	RLResult;
 typedef interface RLCollections RLCollections ;
+typedef interface Iterator 	Iterator;
 
 /*
  *	interface for manipulate thread handle 
@@ -491,229 +492,28 @@ interface RLResult{
 
 };
 
+RLLOCAL int __raylist__index__iterator__ = 0;
+interface Iterator {
+	/* Returns the next element in the iteration. */
+	RLResult (*Next)(void);
+	/* Returns true if the iteration has more elements. */
+	RLBOOL (*HasNext)(void);
+};
+
+#define RLForEach(value , list)		\
+	Iterator __raylist__it = (list).Iter();	\
+	for(void* (value) = __raylist__it.Next().GetData(); __raylist__it.HasNext() ; (value) = __raylist__it.Next().GetData())
 
 // NOTE: this interface can anyone implements thiere functions
 // NOTE: raylist use List and Stack and Queue function to implement this functions
 interface RLList{
-#ifndef USING_LIST
-	/*
-	 *	Any
-	 *	complexity O(N)
-	 * */
-	RLBOOL (*List_Any)(void);
-	/*
-	 *	All
-	 *	complexity O(N)
-	 * */
-	RLBOOL (*List_All)(void);
-	/*
-	 *	return true if list is empty else false
-	 *	complexity O(1)
-	 * */
-	RLBOOL (*List_Is_Empty)(
-			void
-	);
-	/*
-	 * 	the complexity still O(N) in worst case the index helps you to know the data u want to get later
-	 *	List_Insert function will take the data and insert at the idx variable it in __raylist_self_list__ global linked list variable
-	 *
-	 *	List_Insert(
-	 *		int idx		: 		index where we insert the data
-	 *		Type type	: 		data type
-	 *		void* data the  :		data
-	 *	)
-	 *	Exemple :
-	 *		my_list.List_Insert(1 , RL_BOOL , true);
-	 * */
-	RLResult (*List_Insert)(
-			int idx,
-			Type type,
-			void* data
-	);
 
-	/*
-	 *	List_Append function will take the data and stored to the __raylist_self_list__ global variable 
-	 *	complexity O(1)
-	 *
-	 * 	List_Append(
-	 *		Type : the data type
-	 *		void*: data pointer point address of stored data
-	 * 	)
-	 *	
-	 *	NOTE : the append method works like push in stack algorithm
-	 *
-	 *	Example :
-	 *		my_list.List_Append(RL_STR , "Hello World");
-	 *
-	 * */
-	void (*List_Append)(
-			Type type,
-			void* data
-	);
-	/*
-	 *	List_Filter function takes function callback that returns boolean and filter all elements from the list
-	 *	complexity O(N)
-	 *
-	 *	Example : 
-	 *	int check_mod_of_num(void* tch){
-	 *		return (*(int*)tch % 2);
-	 *	}
-	 *	
-	 *					before : 	[
-	 *								3,2,7,5,1
-	 *							]
-	 *	my_list.List_Filter(check_mod_of_num , RL_INT);
-	 *					after : 	[
-	 *								2
-	 *							]
-	 * */
-	RLResult (*List_Filter)(
-			FILTERCALLBACK,
-			Type , 
-			Filter_Flag flag
-	);
-	/*
-	 * 	List_Search function return true if the data has been found and will store index of the data in int* parameter else will return false
-	 *	complexity O(N)
-	 *
-	 *	List_Search(
-	 *		int* : integer pointer variable to store index of the data we found
-	 *		Type : the data type
-	 *		void*: data pointer point address of stored data
-	 *	)
-	 *
-	 *	Example :
-	 *		int var;
-	 *		if(my_list.List_Search(&var, RL_STR , "Hello World"))	// handle (var contained the index of the data)
-	 *		else 							// handle
-	 *
-	 * */
-	RLResult (*List_Search)(
-			Type ,
-			void* 
-	);
-	//RLBOOL (*List_Search)(
-	//		int* ,
-	//		Type ,
-	//		void* 
-	//);
-	/*
-	 *	List_Del_Index function takes index and delete it from the linked list
-	 *	complexity O(N)
-	 *
-	 *	List_Del_Index(
-	 *		int : the index that we want to delete
-	 *	)
-	 *
-	 *	Example :
-	 *		my_list.List_Del_Index(3);
-	 *
-	 * */
-	RLResult (*List_Del_Index)(
-			int idx 
-	);
-	/*
-	 *	List_Get function takes index parameter and will return void* data  
-	 *
-	 *	List_Del_Index(
-	 *		int : the index of the data we want to get
-	 *	)
-	 *
-	 *	Example :
-	 *		void* d = my_list.List_Get(2);
-	 *		the data pointer in d variable now 
-	 *
-	 * */
-	RLResult (*List_Get)(
-			int idx
-	);
-
-	/*
-	 *	List_Reverse function will reverse the list 
-	 *
-	 * */
-	RLResult (*List_Reverse)(
-			void
-	);
-	/*
-	 *	List_Print function will print all our data in standerd output 
-	 * */
-
-	void (*List_Print)(
-			void
-	);
-	/*
-	 * void bar{
-	 * 	printf("Hello World");
-	 * }
-	 * IfaceList my_list = list(0);
-	 * my_list.List_Append(RL_VOIDFUNC , bar);
-	 * 	the list now contains a function 
-	 *  zero for execute function of index 0 , and NULL parameter mean the funtion doesm't accept a parameter
-	 * my_list.List_Exec_Sync(0 , NULL);
-	 * */
-
-	RLResult (*List_Exec_Sync)(
-			int idx,
-			void* data,
-			Exec_Flag flag
-	);
-
-	// clear list
-	void (*List_Clear)(
-			void
-	);
-	/*
-	 *  return String if the error is set true (__raylist___self__status__ > 0)
-	 * */ 
-	string (*List_Get_Error)(
-			void
-	);
-	/*
-	 *	map is a higher-order function that applies a given function to each element of a collection
-	 *	Example : 
-	 *
-	 *		void* callback(void* d)
-	 *		{
-	 *			if(*(int*)d == 2)
-	 *			{
-	 *				*(int*)d = 10;
-	 *			}
-	 *			return d;
-	 *		}
-	 *		IfaceList my_list = list(0);
-	 *		for(int i = 0 ; i < 4 ; i++){
-	 *			RLAppend(i , RL_INT);
-	 *		}
-	 *		list : [0,1,2,3]
-	 *		my_list.List_Map(callback , RL_INT);
-	 *		list : [0,1,10,3]
-	 * */ 
-	void (*List_Map)(
-			MAPCALLBACK	func,
-			Type		type
-	);
-	/*
-	 *	__raylist_self_exec__ asynchronous functiona
-	 *	IfaceList my_list = list(0);
-	 *	my_list.Append(RL_STRFUNC , func);
-	 *	my_list.List_Exec_Async(0, NULL).Wait();
-	 *
-	 * */
-	RLResult (*List_Exec_Async)(
-			int idx,
-			RLAPIParam data
-	);
-	//IfaceThread (*List_Exec_Async)(
-	//		int idx,
-	//		RLAPIParam data
-	//);
-
-	/*
-	 *	return length of list
-	 * */
-	int (*List_Len)(void);
-#else
+	/* return implementation of the Iterator interface */ 
+	/* how to use it */
+	/* for(Iterator it = my_list.Iter() , void* data = NULL ; it.HasNext() ; data = it.Next()){ */
+	/* 	... */
+	/* } */
+	Iterator (*Iter)(void);
 	/*
 	 *	Any
 	 * */
@@ -903,7 +703,6 @@ interface RLList{
 	 *	return length of list
 	 * */
 	int (*Len)(void);
-#endif
 };
 
 // RLCollections interface 
@@ -2111,30 +1910,25 @@ void __raylist_self_list_print__()
 	printf("\n]\n");
 }
 
-RLList __raylist__init__list__impl(RLList* cl){
-#ifndef USING_LIST
-	cl->List_All = __raylist_self_list_all__;
-	cl->List_Any = __raylist_self_list_any__;
+RLBOOL __raylist_private_has_next__() {
+	return __raylist__index__iterator__ <= __raylist_self_list_len__();
+}
 
-	cl->List_Is_Empty = __raylist_self_is_empty__;
-	cl->List_Insert = __raylist_self_list_insert__;
-	cl->List_Append = __raylist_self_list_append__;
-	cl->List_Del_Index = __raylist_self_delete__;
-	cl->List_Get = __raylist_self_list_get__;
-	cl->List_Search = __raylist_self_list_search__;
-	cl->List_Reverse = __raylist_self_list_reverse__;
-	cl->List_Print = __raylist_self_list_print__;
-	cl->List_Exec_Sync = __raylist_self_exec__;
-	cl->List_Clear = __raylist_self_clear__;
-	cl->List_Get_Error = __raylist_self_get_error__;
-	cl->List_Filter = __raylist_self_filter__;
-	cl->List_Map = __raylist_self_list_map__;
-	cl->List_Exec_Async = __raylist_self_list_exec_async__;
-	cl->List_Len = __raylist_self_list_len__;
-#else
+RLResult __raylist_private_next__() {
+	return __raylist_self_list_get__(__raylist__index__iterator__++);
+}
+
+Iterator __raylist_self_iterator__() {
+	return (Iterator){
+		.HasNext 	= 	__raylist_private_has_next__,
+		.Next 		= 	__raylist_private_next__ 
+	};
+}
+
+RLList __raylist__init__list__impl(RLList* cl){
+	cl->Iter = __raylist_self_iterator__;
 	cl->All = __raylist_self_list_all__;
 	cl->Any = __raylist_self_list_any__;
-
 	cl->Insert = __raylist_self_list_insert__;
 	cl->Append = __raylist_self_list_append__;
 	cl->Del_Index = __raylist_self_delete__;
@@ -2149,7 +1943,6 @@ RLList __raylist__init__list__impl(RLList* cl){
 	cl->Map = __raylist_self_list_map__;
 	cl->Exec_Async = __raylist_self_list_exec_async__;
 	cl->Len = __raylist_self_list_len__;
-#endif
 	return *cl;
 }
 
