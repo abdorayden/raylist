@@ -498,15 +498,33 @@ interface Iterator {
 	RLResult (*Next)(void);
 	/* Returns true if the iteration has more elements. */
 	RLBOOL (*HasNext)(void);
+	/* Reset the index */
+	void (*Reset)(void);
 };
 
-#define RLForEach(value , list)		\
-	Iterator __raylist__it = (list).Iter();	\
-	for(void* (value) = __raylist__it.Next().GetData(); __raylist__it.HasNext() ; (value) = __raylist__it.Next().GetData())
+#define RLForEach(result , list)		\
+	for(RLResult (result) = (list).Iter().Next(); (list).Iter().HasNext() ; (result) = (list).Iter().Next())
+
+typedef void (*FOREACHDATACALLBACK)(RLResult);
+
+#if defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
+#define RLForEachLambda(body) 	\
+	RLAmbda(void , (RLResult result) , body)
+
+#else
+    #warning "This is not gcc, RLForEachLambda macro is not allowed"
+#define RLForEachLambda(body) 	\
+	NULL
+#endif
 
 // NOTE: this interface can anyone implements thiere functions
 // NOTE: raylist use List and Stack and Queue function to implement this functions
 interface RLList{
+
+	/* ForEach method is java style */ 
+	/* 	this method process the result for each result in list */
+	void (*ForEach)(FOREACHDATACALLBACK);
+
 	/* return implementation of the Iterator interface 						*/ 
 	/* how to use it										*/
 	/* for(Iterator it = my_list.Iter() , void* data = NULL ; it.HasNext() ; data = it.Next()){	*/
@@ -1922,14 +1940,26 @@ RLResult __raylist_private_next__() {
 	return __raylist_self_list_get__(__raylist__index__iterator__++);
 }
 
+void __raylist_private_reset__() {
+	__raylist__index__iterator__ = 0;
+}
+
 Iterator __raylist_self_iterator__() {
 	return (Iterator){
 		.HasNext 	= 	__raylist_private_has_next__,
-		.Next 		= 	__raylist_private_next__ 
+		.Next 		= 	__raylist_private_next__,
+		.Reset 		= 	__raylist_private_reset__ 
 	};
 }
 
+void __raylist_self_foreach__(FOREACHDATACALLBACK callback){
+	for(int i = 0 ; i < __raylist_self_list_len__() ; i++){
+		callback(__raylist_self_list_get__(i));
+	}
+}
+
 RLList __raylist__init__list__impl(RLList* cl){
+	cl->ForEach = __raylist_self_foreach__;
 	cl->Iter = __raylist_self_iterator__;
 	cl->All = __raylist_self_list_all__;
 	cl->Any = __raylist_self_list_any__;
